@@ -18,5 +18,5 @@ PWA para celular + backend Node (sin dependencias) para el checklist asíncrono 
 
 ## Estructura
 - `server.js` API `/api/*` + archivos estáticos de `public/`. `GET /api/salud` para monitoreo.
-- `public/` PWA (`app.js`, `api/odoo.js` real, `api/mock.js` demo, `datos/checklist.json`).
+- `public/` PWA (`app.js`, `capa/odoo.js` real, `capa/mock.js` demo, `datos/checklist.json`).
 - `odoo/plan_inicio_obra.py` script que crea los modelos `x_inicio_obra*`, acciones y automatizaciones en Odoo (seco/aplicar/rollback). Los usuarios reales se cargan desde un archivo local que **no** está en el repo.

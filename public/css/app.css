@@ -9,3 +9,6 @@ input,select,textarea{width:100%;padding:12px;font-size:16px;border:1px solid #c
 .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#eef2f7;color:#456;margin-right:4px}.tag.r{background:#fde8e8;color:#b42318}.tag.v{background:#e6f6ec;color:#1f7a45}.tag.a{background:#fff4e0;color:#9a5b00}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}.logo{text-align:center;margin:30px 0 20px}.logo img{width:84px}.logo h1{font-size:22px;margin:10px 0 2px;color:#0b3d6e}
 .err{color:#b42318;font-size:14px}.adj{font-size:12px;color:#0b3d6e}nav.tabs{display:flex;gap:6px;margin-bottom:12px}nav.tabs a{flex:1;text-align:center;padding:8px;border-radius:8px;background:#fff;color:#0b3d6e;text-decoration:none;font-size:14px}nav.tabs a.on{background:#0b3d6e;color:#fff}
+
+details.guia{margin-top:8px;background:#eef4ff;border-radius:10px;padding:8px 10px}details.guia summary{font-weight:600;color:#1d4ed8;cursor:pointer}details.guia p{margin:6px 0 0;font-size:14px;line-height:1.4}
+details.info{margin:4px 0;font-size:13px;color:#344054}details.info summary{color:#1d4ed8;cursor:pointer;font-size:13px}details.info div{margin:3px 0 0 4px;line-height:1.35}

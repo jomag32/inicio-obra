@@ -1,5 +1,6 @@
 const DEMO = new URLSearchParams(location.search).has("demo");
-const api = await import(DEMO ? "./api/mock.js" : "./api/odoo.js");
+const api = await import(DEMO ? "./capa/mock.js" : "./capa/odoo.js");
+let GUIA = null; const guia = async () => GUIA || (GUIA = await fetch("datos/guia.json").then((r) => r.json()).catch(() => ({ areas: {} })));
 const $ = (s) => document.querySelector(s), app = $("#app");
 const ses = () => JSON.parse(localStorage.getItem("io_sesion2") || "null");
 const fmt = (d) => new Date(d).toLocaleString("es-AR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" });
@@ -43,13 +44,15 @@ async function area(u, otId, aid) {
   const db = await api.cargar(), ot = db.obras.find((o) => o.id === otId), a = db.areas.find((x) => x.id === aid), t = db.tareas.find((x) => x.ot === otId && x.area_id === aid);
   const its = db.items.filter((i) => i.ot === otId && i.area_id === aid), mia = u.areas.includes(aid), p = t.no_aplica ? 100 : Math.round((100 * its.filter((i) => i.hecho).length) / its.length);
   const resp = db.usuarios.filter((x) => x.areas.includes(aid)).map((x) => x.nombre).join(", ");
+  const g = (await guia()).areas[a.code] || { manual: "", items: [] }, gi = (i, k) => g.items.find((x) => x.item === i.name) || g.items[k];
   app.innerHTML = `<a href="#/${u.rol === "gerente" ? "" : "ot/" + otId}" class="muted">‹ Volver</a><h2>${ot.name}</h2>
   ${t.observada ? `<div class="card" style="border-left:4px solid #b42318"><b style="color:#b42318">Observado por el CEO</b><div>${t.obs_ceo}</div><div class="muted">Corregí y volvé a marcar los ítems.</div></div>` : ""}
-  <div class="card"><div class="row"><b>${a.name}</b><span class="muted">${p}%</span></div>${bar(p)}<div class="muted">Vence ${fmt(t.vence)} (hs lun–sáb) · responsable: ${resp}</div></div>
+  <div class="card"><div class="row"><b>${a.name}</b><span class="muted">${p}%</span></div>${bar(p)}<div class="muted">Vence ${fmt(t.vence)} (hs lun–sáb) · responsable: ${resp}</div>
+   ${g.manual ? `<details class="guia"><summary>📘 Cómo completar esta área</summary><p>${g.manual}</p></details>` : ""}</div>
   <div class="card"><label class="row" style="justify-content:flex-start;gap:10px"><input type="checkbox" id="na" ${t.no_aplica ? "checked" : ""} ${mia ? "" : "disabled"} style="width:24px;height:24px"><b>No aplica a esta obra</b></label>
    ${t.no_aplica ? `<div class="muted">Motivo: ${t.motivo}</div><div class="muted">✔ ${nom(db, t.na_por)} · ${fmt(t.na_at)}</div>` : mia ? `<div id="nabox" hidden><textarea id="motivo" rows="2" placeholder="Motivo (obligatorio)"></textarea><button class="btn sec" id="naok">Confirmar «No aplica»</button></div>` : ""}</div>
-  ${t.no_aplica ? "" : `<div class="card">${its.map((i) => `<div class="item"><input type="checkbox" data-i="${i.id}" ${i.hecho ? "checked" : ""} ${mia ? "" : "disabled"}>
-   <div style="flex:1"><div>${i.name}</div>${i.adj ? `<span class="tag">Requiere adjunto</span>` : ""}${i.observado && !i.hecho ? `<span class="tag r">Reabierto por CEO</span>` : ""}
+  ${t.no_aplica ? "" : `<div class="card">${its.map((i, k) => `<div class="item"><input type="checkbox" data-i="${i.id}" ${i.hecho ? "checked" : ""} ${mia ? "" : "disabled"}>
+   <div style="flex:1"><div>${i.name}</div>${gi(i, k) ? `<details class="info"><summary>ⓘ Qué significa</summary><div><b>Qué:</b> ${gi(i, k).que}</div><div><b>Adjunto:</b> ${gi(i, k).adjunto}</div><div><b>Quién:</b> ${gi(i, k).quien}</div><div><b>Cuándo:</b> ${gi(i, k).cuando}</div></details>` : ""}${i.adj ? `<span class="tag">Requiere adjunto</span>` : ""}${i.observado && !i.hecho ? `<span class="tag r">Reabierto por CEO</span>` : ""}
    ${i.adjuntos.map((f) => `<div class="adj">📎 ${f}</div>`).join("")}
    ${i.hecho ? `<div class="muted">✔ ${nom(db, i.hecho_por)} · ${fmt(i.hecho_at)}${new Date(i.hecho_at) > new Date(i.vence) ? ' <span class="tag r">fuera de término</span>' : ""}</div>` : ""}
    ${mia && !i.hecho && i.adj ? `<label class="adj">＋ Adjuntar foto o PDF<input type="file" data-f="${i.id}" accept="image/*,application/pdf" capture="environment" hidden></label>` : ""}</div></div>`).join("")}</div>`}

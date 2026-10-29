@@ -1,0 +1,500 @@
+{
+ "areas": {
+  "COM": {
+   "manual": "Comercial abre el circuito: crea la OT y le pasa a cada área lo que necesita para arrancar. Completá los ítems en orden; los avisos a Legales, Tesorería, UGEOP y Logística se hacen por el chatter de la OT en Odoo (mencionando al área) para que quede evidencia. Plazo del área: 24 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "OT creada en Odoo con cliente, ubicación y tipo de obra",
+     "que": "Crear el proyecto (OT) en Odoo con el cliente correcto, la dirección de la obra y el tipo de obra. Al crearla arranca este checklist para todas las áreas.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Comercial (no se delega).",
+     "cuando": "Al cerrar la venta (es lo primero)."
+    },
+    {
+     "item": "Términos comerciales acordados y pasados a Legales (contrato / FCI)",
+     "que": "Pasar a Legales por escrito los términos acordados con el cliente: precio, forma de pago, plazo, alcance, garantía y penalidades. Con eso Legales arma el contrato o la FCI.",
+     "adjunto": "Opcional: presupuesto aceptado o minuta de términos.",
+     "quien": "Gerente de Comercial (no se delega).",
+     "cuando": "Dentro de las 24 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Calendario de cobros, certificaciones e hitos de facturación cargado y enviado a Tesorería",
+     "que": "Cargar en Odoo las fechas de cobro, las certificaciones y los hitos de facturación del contrato, y avisar a Tesorería que están cargados.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Comercial (no se delega).",
+     "cuando": "Dentro de las 24 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Documentación técnica y comercial (planos, anexos, alcance) entregada a UGEOP y Legales",
+     "que": "Entregar a UGEOP y a Legales planos, anexos y alcance de la obra.",
+     "adjunto": "Obligatorio: planos/anexos/alcance (PDF o fotos).",
+     "quien": "Gerente de Comercial (no se delega).",
+     "cuando": "Dentro de las 24 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Requisitos de seguridad del cliente para ingreso a predio informados (documentación y anticipación)",
+     "que": "Informar si la obra es dentro de un predio de terceros, qué documentación pide el cliente para ingresar y con cuánta anticipación.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Comercial (no se delega).",
+     "cuando": "Dentro de las 24 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Ubicación, accesos y requisitos del lugar informados a Logística (choferes, grúas, equipos certificados)",
+     "que": "Informar a Logística la ubicación, cómo es el acceso al predio y si el cliente exige choferes, grúas o equipos certificados.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Comercial (no se delega).",
+     "cuando": "Dentro de las 24 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Vehículos afectados a la obra desde el inicio informados a Logística",
+     "que": "Informar a Logística si hay que dejar vehículos afectados a la obra desde el primer día. Si no hay, marcalo igual y aclaralo en la observación.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Comercial (no se delega).",
+     "cuando": "Dentro de las 24 h de creada la OT (cuentan lunes a sábado)."
+    }
+   ]
+  },
+  "LEG": {
+   "manual": "Legales deja la obra en regla: ninguna obra empieza sin contrato o FCI aprobado por el CEO. Subí los documentos firmados como adjunto del ítem; si algo no corresponde a esta obra (por ejemplo, no hay subcontratos), marcá el ítem y explicalo en la observación. Plazo del área: 72 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "Contrato o Ficha Contractual Interna (FCI) elaborado",
+     "que": "Redactar el contrato con el cliente o, si no firma contrato formal, la Ficha Contractual Interna (FCI).",
+     "adjunto": "Obligatorio: contrato o FCI (borrador o firmado).",
+     "quien": "Gerente de Legales (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "FCI completa: partes y obra, alcance, plazo, precio y pago, garantía, adicionales, conformidad del cliente",
+     "que": "Verificar que la FCI tenga todo el contenido mínimo: partes y obra, alcance, plazo, precio y pago, garantía, adicionales y conformidad del cliente.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Legales (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Garantías del contrato registradas (pólizas de caución, fondo de reparo)",
+     "que": "Registrar las garantías del contrato: pólizas de caución y fondo de reparo.",
+     "adjunto": "Obligatorio: pólizas o constancia.",
+     "quien": "Gerente de Legales (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Seguros de obra vigentes (RC, todo riesgo construcción)",
+     "que": "Dejar vigentes los seguros de la obra: responsabilidad civil y todo riesgo construcción.",
+     "adjunto": "Obligatorio: pólizas vigentes.",
+     "quien": "Gerente de Legales (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Seguros del personal (RRHH) verificados contra el contrato (ej. no repetición)",
+     "que": "Revisar que los seguros del personal que contrata RRHH cumplan lo que pide el contrato (por ejemplo, cláusula de no repetición a favor del cliente).",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Legales (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Permiso municipal de obra y documentación de ingreso a predios de terceros",
+     "que": "Gestionar el permiso municipal de obra y la documentación de ingreso al predio del cliente.",
+     "adjunto": "Obligatorio: permiso o constancia de trámite.",
+     "quien": "Gerente de Legales (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Exigencias del contrato sobre certificación de choferes, grúas y equipos informadas a Logística",
+     "que": "Pasar a Logística lo que exige el contrato sobre certificación de choferes, grúas y equipos.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Legales (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Subcontratos con tercerizados formalizados (si aplica)",
+     "que": "Formalizar por escrito los subcontratos con tercerizados. Si no hay, aclaralo en la observación.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Legales (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Acta de inicio redactada / validada",
+     "que": "Redactar o validar el acta de inicio de obra.",
+     "adjunto": "Obligatorio: acta de inicio.",
+     "quien": "Gerente de Legales (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Tarea de Legales cargada en el Gantt con sus hitos",
+     "que": "Cargar la tarea de Legales en el Gantt de la OT con sus hitos (contrato/FCI, pólizas, permisos, acta de inicio, recepciones, entrega y garantías devueltas).",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Legales (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    }
+   ]
+  },
+  "PRE": {
+   "manual": "Presupuesto y Cálculo deja en Odoo la base económica de la obra: con eso se vende y después se sigue el margen. Plazo del área: 48 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "Cálculo, costo y presupuesto de la obra cargados en Odoo",
+     "que": "Cargar en Odoo el cálculo, el costo y el presupuesto de la obra.",
+     "adjunto": "Obligatorio: presupuesto o planilla de cálculo.",
+     "quien": "Gerente de Presupuesto y Cálculo (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Presupuesto aprobado y alcance del proyecto confirmados",
+     "que": "Confirmar que el presupuesto quedó aprobado y que el alcance coincide con lo vendido.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Presupuesto y Cálculo (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Maquinaria y equipos cotizados con horas de uso informados a Logística",
+     "que": "Informar a Logística la maquinaria y los equipos cotizados, con las horas de uso previstas.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Presupuesto y Cálculo (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Vehículos cotizados que quedan afectados a la obra informados",
+     "que": "Informar si se cotizaron vehículos que deben quedar afectados a la obra desde el inicio. Si no hay, aclaralo.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Presupuesto y Cálculo (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    }
+   ]
+  },
+  "UGE": {
+   "manual": "UGEOP arma el Gantt único y controla que todas las áreas carguen lo suyo. Además de tus ítems, desde la vista consolidada ves qué área está atrasada para reclamarle. Plazo del área: 48 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "Gantt único de la OT armado con una tarea por área",
+     "que": "Armar el Gantt único de la OT con una tarea por área.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de UGEOP (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Hitos de obra con fecha planificada cargados (críticos marcados para ATS)",
+     "que": "Cargar los hitos de obra con fecha planificada y marcar los críticos: esos activan los ATS de Higiene y Seguridad.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de UGEOP (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Coherencia contrato/FCI – cronograma – presupuesto verificada",
+     "que": "Verificar que contrato/FCI, cronograma y presupuesto digan lo mismo (plazos, alcance, montos).",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de UGEOP (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Relevamiento de campo y planos cargados",
+     "que": "Cargar el relevamiento de campo y los planos.",
+     "adjunto": "Obligatorio: relevamiento y/o planos.",
+     "quien": "Gerente de UGEOP (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "OF emitidas a Fábrica",
+     "que": "Emitir las Órdenes de Fabricación (OF) a Fábrica.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de UGEOP (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Ubicación y condiciones de acceso relevadas informadas a Logística",
+     "que": "Informar a Logística la ubicación y las condiciones de acceso relevadas en campo.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de UGEOP (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Equipos necesarios (toneladas, altura, radio), carga especial y cantidad de choferes/operadores informados a Logística",
+     "que": "Informar a Logística qué equipos hacen falta (toneladas, altura y radio), si hay carga especial y cuántos choferes/operadores se necesitan.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de UGEOP (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Control: calendario de cobros llegó a Tesorería",
+     "que": "Controlar que el calendario de cobros que carga Comercial haya llegado a Tesorería.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de UGEOP (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    }
+   ]
+  },
+  "FAB": {
+   "manual": "Fábrica recibe la OT y las OF y programa la producción; Control de Gestión de Fábrica registra las fechas para medir cumplimiento. Plazo del área: 48 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "OT y OF recibidas de Técnica",
+     "que": "Confirmar que recibiste la OT y las OF emitidas por Técnica.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Fábrica (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Disponibilidad de materiales verificada con Stock",
+     "que": "Verificar con Stock que haya materiales para fabricar.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Fábrica (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Fabricación programada según prioridades del Gantt",
+     "que": "Programar la fabricación según las prioridades del Gantt de la OT.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Fábrica (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Fechas planificadas de inicio y fin de cada OF cargadas (Control de Gestión)",
+     "que": "Cargar en Odoo las fechas planificadas de inicio y fin de cada OF (Control de Gestión de Fábrica).",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Fábrica (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    }
+   ]
+  },
+  "COP": {
+   "manual": "Compras asegura los materiales críticos y los elementos de seguridad a tiempo. Si la obra no tiene compras (por ejemplo, materiales del cliente), usá «No aplica» con el motivo. Plazo del área: 48 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "Listado de materiales críticos con fechas de necesidad recibido de Técnica",
+     "que": "Recibir de Técnica el listado de materiales críticos con la fecha en que se necesitan.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Compras (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Proveedores cotizados y seleccionados para ítems críticos",
+     "que": "Cotizar, comparar y elegir proveedores para los ítems críticos.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Compras (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Entregas programadas según avance de obra",
+     "que": "Programar las entregas según el avance de obra.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Compras (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Recepción y trazabilidad en depósito de obra coordinada con Stock",
+     "que": "Coordinar con Stock la recepción y la trazabilidad en el depósito de obra.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Compras (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Elementos de seguridad de la Ficha de Riesgos comprados antes del hito",
+     "que": "Comprar los elementos de seguridad que pide la Ficha de Riesgos de Obra, antes del hito que los requiere.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Compras (no se delega).",
+     "cuando": "Antes del hito que los requiere."
+    }
+   ]
+  },
+  "STK": {
+   "manual": "Stock deja el depósito de la obra listo y la trazabilidad activa desde el primer movimiento. Plazo del área: 48 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "Depósito exclusivo de la obra creado en Odoo",
+     "que": "Pedir a Sistemas el depósito exclusivo de la obra en Odoo y confirmar que está creado.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Stock (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Primeros ingresos coordinados con Compras y Fábrica",
+     "que": "Coordinar con Compras y Fábrica los primeros ingresos de materiales.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Stock (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Trazabilidad activa desde el primer movimiento",
+     "que": "Verificar que cada ingreso, consumo o devolución quede registrado desde el primer movimiento.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Stock (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Costos y cantidades reales cargados (indicador IDFSO activo)",
+     "que": "Cargar costos y cantidades reales para que funcione el indicador de desviación de stock (IDFSO).",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Stock (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    }
+   ]
+  },
+  "LOG": {
+   "manual": "Logística necesita información mínima de otras áreas antes de planificar. Si falta algo, reclamalo a UGEOP (que controla la carga) y marcá el ítem recién cuando lo tengas. Plazo del área: 72 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "Información mínima recibida: ubicación y acceso",
+     "que": "Recibir de UGEOP y Comercial la ubicación de la obra y cómo son los accesos.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Logística (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Información mínima recibida: equipos, capacidad y alcance; carga especial",
+     "que": "Recibir de UGEOP qué equipos hacen falta (toneladas, altura, radio) y si hay carga especial.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Logística (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Información mínima recibida: horas de uso cotizadas y vehículos en obra",
+     "que": "Recibir de Presupuesto las horas de máquina cotizadas y de UGEOP/Comercial si hay vehículos afectados a la obra.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Logística (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Información mínima recibida: choferes/operadores y requisitos del lugar",
+     "que": "Recibir de UGEOP/RRHH cuántos choferes y operadores hacen falta y con qué habilitaciones, y de Comercial/Legales si el cliente exige equipos certificados.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Logística (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Accesos analizados",
+     "que": "Analizar los accesos para saber qué vehículos pueden entrar.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Logística (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Plan de equipos y vehículos definido",
+     "que": "Definir el plan de equipos y vehículos de la obra.",
+     "adjunto": "Obligatorio: plan de equipos y vehículos.",
+     "quien": "Gerente de Logística (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Choferes y operadores habilitados",
+     "que": "Confirmar que los choferes y operadores asignados están habilitados.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Logística (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Requisitos del lugar cumplidos",
+     "que": "Confirmar que se cumplen los requisitos del lugar que pide el cliente.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Logística (no se delega).",
+     "cuando": "Dentro de las 72 h de creada la OT (cuentan lunes a sábado)."
+    }
+   ]
+  },
+  "TES": {
+   "manual": "Tesorería prepara la parte financiera de la obra a partir del calendario de cobros que le pasa Comercial. Plazo del área: 48 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "Calendario de cobros y condiciones recibido de Comercial",
+     "que": "Recibir de Comercial el calendario de cobros, las certificaciones y las condiciones del contrato.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Tesorería (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Centros de costo y cuenta analítica de la obra configurados",
+     "que": "Configurar el centro de costo y la cuenta analítica de la obra.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Tesorería (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Flujo de fondos previsto y compromisos de pago (incluye pólizas y garantías) definidos",
+     "que": "Definir el flujo de fondos previsto y los pagos según el cronograma, incluyendo el costo de pólizas y garantías.",
+     "adjunto": "Obligatorio: flujo de fondos.",
+     "quien": "Gerente de Tesorería (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Imputación de ingresos y egresos supervisada desde el inicio",
+     "que": "Revisar que los ingresos y egresos de la obra se imputen bien desde el principio.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Tesorería (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    }
+   ]
+  },
+  "RRH": {
+   "manual": "RRHH asigna al personal y deja su documentación lista para que Higiene y Seguridad lo habilite. Plazo del área: 48 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "Personal operativo y técnico asignado en Odoo",
+     "que": "Asignar en Odoo el personal operativo y técnico de la obra.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de RRHH (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Seguro de accidentes personales (socios) / ART (dependencia) vigente según contrato",
+     "que": "Dejar vigente el seguro de accidentes personales (socios) o la ART (personal en relación de dependencia), con las condiciones que pida el contrato.",
+     "adjunto": "Obligatorio: constancia de seguro/ART.",
+     "quien": "Gerente de RRHH (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Nómina de obra con documentación enviada a Higiene y Seguridad",
+     "que": "Enviar a Higiene y Seguridad la nómina de la obra con su documentación.",
+     "adjunto": "Obligatorio: nómina.",
+     "quien": "Gerente de RRHH (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Habilitaciones de choferes y operadores verificadas y comunicadas a Logística",
+     "que": "Verificar las habilitaciones de choferes y operadores (carnet profesional, curso de grúa, etc.) y comunicarlas a Logística.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de RRHH (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Dispositivo con acceso a Odoo para la obra solicitado a Sistemas",
+     "que": "Pedir a Sistemas la tablet o notebook con acceso a Odoo para la obra.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de RRHH (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    }
+   ]
+  },
+  "HYS": {
+   "manual": "Higiene y Seguridad define la condición de seguridad: nadie ingresa a obra sin estar habilitado. El detalle está en el procedimiento ARME-PR-HYS-001. Plazo del área: 48 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "items": [
+    {
+     "item": "Ficha de Riesgos de Obra (FRO) aprobada dentro de las 48 h hábiles",
+     "que": "Aprobar la Ficha de Riesgos de Obra (FRO).",
+     "adjunto": "Obligatorio: FRO aprobada.",
+     "quien": "Gerente de Higiene y Seguridad (no se delega).",
+     "cuando": "Dentro de las 48 h hábiles de creada la OT."
+    },
+    {
+     "item": "Personal habilitado: nómina, seguro, inducción y EPP registrados",
+     "que": "Habilitar al personal: nómina, seguro vigente, inducción y EPP entregados y registrados.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Higiene y Seguridad (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "ATS de hitos críticos programados en el Gantt",
+     "que": "Programar en el Gantt los ATS de los hitos críticos que marcó UGEOP.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Higiene y Seguridad (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    },
+    {
+     "item": "Inspección de apertura de obra programada",
+     "que": "Programar en el Gantt la inspección de apertura de obra.",
+     "adjunto": "No hace falta.",
+     "quien": "Gerente de Higiene y Seguridad (no se delega).",
+     "cuando": "Dentro de las 48 h de creada la OT (cuentan lunes a sábado)."
+    }
+   ]
+  }
+ }
+}
