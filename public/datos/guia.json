@@ -55,7 +55,7 @@
    ]
   },
   "LEG": {
-   "manual": "Legales deja la obra en regla: ninguna obra empieza sin contrato o FCI aprobado por el CEO. Subí los documentos firmados como adjunto del ítem; si algo no corresponde a esta obra (por ejemplo, no hay subcontratos), marcá el ítem y explicalo en la observación. Plazo del área: 72 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
+   "manual": "Legales deja la obra en regla: ninguna obra empieza sin contrato o FCI aprobado por el CEO. Subí los documentos firmados como adjunto del ítem; si algo no corresponde a esta obra (por ejemplo, no hay subcontratos), marcá el ítem y explicalo en su casilla «Observación» (queda en el historial de Odoo). Plazo del área: 72 h (lun–sáb). Lo que marques queda registrado con tu usuario, fecha y hora (punto 2.2): marcá solo lo que está hecho de verdad.",
    "items": [
     {
      "item": "Contrato o Ficha Contractual Interna (FCI) elaborado",

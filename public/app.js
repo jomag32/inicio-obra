@@ -55,11 +55,13 @@ async function area(u, otId, aid) {
    <div style="flex:1"><div>${i.name}</div>${gi(i, k) ? `<details class="info"><summary>ⓘ Qué significa</summary><div><b>Qué:</b> ${gi(i, k).que}</div><div><b>Adjunto:</b> ${gi(i, k).adjunto}</div><div><b>Quién:</b> ${gi(i, k).quien}</div><div><b>Cuándo:</b> ${gi(i, k).cuando}</div></details>` : ""}${i.adj ? `<span class="tag">Requiere adjunto</span>` : ""}${i.observado && !i.hecho ? `<span class="tag r">Reabierto por CEO</span>` : ""}
    ${i.adjuntos.map((f) => `<div class="adj">📎 ${f}</div>`).join("")}
    ${i.hecho ? `<div class="muted">✔ ${nom(db, i.hecho_por)} · ${fmt(i.hecho_at)}${new Date(i.hecho_at) > new Date(i.vence) ? ' <span class="tag r">fuera de término</span>' : ""}</div>` : ""}
-   ${mia && !i.hecho && i.adj ? `<label class="adj">＋ Adjuntar foto o PDF<input type="file" data-f="${i.id}" accept="image/*,application/pdf" capture="environment" hidden></label>` : ""}</div></div>`).join("")}</div>`}
+   ${mia ? `<textarea class="obs" data-o="${i.id}" rows="1" maxlength="2000" placeholder="Observación (opcional)">${(i.obs || "").replace(/</g, "&lt;")}</textarea>` : i.obs ? `<div class="muted">📝 ${i.obs.replace(/</g, "&lt;")}</div>` : ""}
+${mia && !i.hecho && i.adj ? `<label class="adj">＋ Adjuntar foto o PDF<input type="file" data-f="${i.id}" accept="image/*,application/pdf" capture="environment" hidden></label>` : ""}</div></div>`).join("")}</div>`}
   <div class="err" id="e"></div>${mia ? "" : '<p class="muted">Solo lectura: cada gerente marca lo suyo (registro indelegable, punto 2.1).</p>'}`;
   const err = (e) => ($("#e").textContent = e.message), re = () => area(u, otId, aid);
   app.querySelectorAll("[data-i]").forEach((c) => (c.onchange = async () => { try { await api.marcar(u, +c.dataset.i, c.checked); re(); } catch (e) { c.checked = !c.checked; err(e); } }));
   app.querySelectorAll("[data-f]").forEach((f) => (f.onchange = async () => { if (f.files[0]) { try { await api.marcar(u, +f.dataset.f, false, DEMO ? f.files[0].name : f.files[0]); re(); } catch (e) { err(e); } } }));
+  app.querySelectorAll("[data-o]").forEach((o) => (o.onchange = async () => { try { await api.observacion(u, +o.dataset.o, o.value.trim()); o.classList.add("ok"); } catch (e) { err(e); } }));
   const na = $("#na"); if (na && mia) na.onchange = async () => { if (t.no_aplica) { await api.noAplica(u, otId, aid, false, ""); re(); } else $("#nabox").hidden = !na.checked; };
   const ok = $("#naok"); if (ok) ok.onclick = async () => { try { await api.noAplica(u, otId, aid, true, $("#motivo").value); re(); } catch (e) { err(e); } };
 }

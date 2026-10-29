@@ -67,3 +67,5 @@ export async function observar(u, ot, obs, areaIds) { const db = await cargar(),
   guardar(db); return areaIds.map((aid) => db.usuarios.filter((x) => x.areas.includes(aid)).map((x) => x.nombre)).flat(); }
 export async function guardarUsuario(u, id, cambios) { const db = await cargar(); if (!["coo", "secretaria"].includes(u.rol)) throw new Error("Sin permiso.");
   Object.assign(db.usuarios.find((x) => x.id === id), cambios); guardar(db); }
+export async function observacion(u, itemId, texto) { const db = await cargar(), it = db.items.find((i) => i.id === itemId);
+  if (!esDe(u, it.area_id)) throw new Error("Solo el gerente del área puede escribir la observación."); it.obs = texto; guardar(db); }
