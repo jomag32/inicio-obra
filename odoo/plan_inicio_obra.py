@@ -5,7 +5,7 @@ Credenciales por entorno: ODOO_URL, ODOO_DB, ODOO_API_KEY (+ ODOO_UID, default 2
 Gerentes: managers.local.json (NO va al repo): código de área -> res.users id."""
 import os, sys, json, time, argparse, xmlrpc.client
 HERE = os.path.dirname(os.path.abspath(__file__))
-CHK = json.load(open(os.path.join(HERE, "datos", "checklist.json")))
+CHK = json.load(open(next(p for p in [os.path.join(HERE, "..", d, "datos", "checklist.json") for d in ("public", "app/public", "app")] if os.path.exists(p))))
 P = "x_inicio_obra"
 
 # ---------- modelos y campos ----------
@@ -74,6 +74,7 @@ for prj in records:
             fin_dia = (d + datetime.timedelta(days=1)).replace(hour=0, minute=0, second=0)
             h = min(horas, (fin_dia - d).total_seconds() / 3600.0); d = d + datetime.timedelta(hours=h); horas -= h
         return d
+    lote = []
     for a in env['x_inicio_obra_area'].search([('x_active','=',True)], order='x_sequence'):
         vence = vence_lun_sab(base - datetime.timedelta(hours=3), a.x_plazo_horas or 48) + datetime.timedelta(hours=3)  # cuenta en hora AR (UTC-3)
         gerentes = env['x_inicio_obra_usuario'].search([('x_area_ids','in',a.id),('x_active','=',True)])
@@ -81,19 +82,24 @@ for prj in records:
              'user_ids': [(6,0,gerentes.mapped('x_user_id').ids)], 'date_deadline': vence,
              'x_io_inicio_id': ini.id, 'x_io_area_id': a.id})
         ta = env['x_inicio_obra_tarea'].create({'x_name': a.x_name, 'x_inicio_id': ini.id, 'x_area_id': a.id, 'x_task_id': t.id, 'x_vence': vence})
-        for p in a.x_plantilla_ids.sorted('x_sequence'):
-            env['x_inicio_obra_item'].create({'x_name': p.x_name, 'x_inicio_id': ini.id, 'x_task_id': t.id, 'x_area_id': a.id,
-                 'x_tarea_id': ta.id, 'x_sequence': p.x_sequence, 'x_requiere_adjunto': p.x_requiere_adjunto, 'x_vence': vence})
+        lote += [{'x_name': p.x_name, 'x_inicio_id': ini.id, 'x_task_id': t.id, 'x_area_id': a.id,
+                 'x_tarea_id': ta.id, 'x_sequence': p.x_sequence, 'x_requiere_adjunto': p.x_requiere_adjunto, 'x_vence': vence} for p in a.x_plantilla_ids.sorted('x_sequence')]
+    its = env['x_inicio_obra_item'].create(lote)  # en lote: una sola escritura, sin disparar la automatización por ítem
+    ini.write({'x_items_total': len(its), 'x_items_ok': 0, 'x_avance': 0})
     ini.message_post(body='Inicio de obra creado: tareas asignadas a cada área.')
 '''
 CODE_ITEM = r'''
+actor = env.user  # la app móvil opera con la sesión Odoo del propio usuario
+COO_UID = 2
+GROUP_CEO = 'Inicio de obra · Aprobador (CEO)'
+
 # Sello de evidencia (2.2): quién y cuándo, lo pone el servidor. Recalcula avance; si 100% avisa al COO.
 for it in records:
     if it.x_hecho and not it.x_hecho_at:
         if it.x_requiere_adjunto and not env['ir.attachment'].search_count([('res_model','=','x_inicio_obra_item'),('res_id','=',it.id)]):
             raise UserError('Este ítem requiere un adjunto antes de marcarlo: ' + it.x_name)
         now = datetime.datetime.now()
-        it.write({'x_observado': False, 'x_hecho_user_id': env.user.id, 'x_hecho_at': now, 'x_fuera_termino': bool(it.x_vence and now > it.x_vence)})
+        it.write({'x_observado': False, 'x_hecho_user_id': actor.id, 'x_hecho_at': now, 'x_fuera_termino': bool(it.x_vence and now > it.x_vence)})
     elif not it.x_hecho and it.x_hecho_at:
         it.write({'x_hecho_user_id': False, 'x_hecho_at': False, 'x_fuera_termino': False})
 for ini in records.mapped('x_inicio_id'):
@@ -106,29 +112,37 @@ for ini in records.mapped('x_inicio_id'):
     vals = {'x_items_total': tot, 'x_items_ok': ok, 'x_avance': (100.0*ok/tot) if tot else 0}
     for t in ini.x_item_ids.mapped('x_task_id'):
         pend = t.x_io_inicio_id and ini.x_item_ids.filtered(lambda i: i.x_task_id == t and not i.x_hecho)
-        t.write({'state': '01_in_progress' if pend else '1_done'})
+        t.sudo().write({'state': '01_in_progress' if pend else '1_done'})
     if tot and all(ini.x_tarea_ids.mapped('x_completa')) and ini.x_state in ('carga','observado'):
         vals.update({'x_state': 'completo', 'x_completo_at': datetime.datetime.now()})
         ini.write(vals)
         coo = env['res.users'].browse(COO_UID)
-        ini.activity_schedule('mail.mail_activity_data_todo', user_id=coo.id, summary='Inicio de obra completo: presentar al CEO')
-        ini.message_post(body='Las 11 áreas completaron su checklist (o marcaron No aplica).', partner_ids=[coo.partner_id.id])
+        ini.sudo().activity_schedule('mail.mail_activity_data_todo', user_id=coo.id, summary='Inicio de obra completo: presentar al CEO')
+        ini.sudo().message_post(body='Las 11 áreas completaron su checklist (o marcaron No aplica).', partner_ids=[coo.partner_id.id])
     else:
         ini.write(vals)
 '''
 CODE_APROBAR = r'''
-if not env.user.has_group('x_inicio_obra.group_ceo'):
+actor = env.user  # la app móvil opera con la sesión Odoo del propio usuario
+COO_UID = 2
+GROUP_CEO = 'Inicio de obra · Aprobador (CEO)'
+
+if not actor.has_group('x_inicio_obra.group_ceo'):
     raise UserError('Solo el CEO puede aprobar el inicio de obra.')
 for ini in records:
     if ini.x_state != 'completo': raise UserError('Faltan ítems por completar.')
     ronda = (ini.x_ronda or 0) + 1
-    env['x_inicio_obra_ronda'].create({'x_name': 'Ronda %d' % ronda, 'x_inicio_id': ini.id, 'x_numero': ronda, 'x_resultado': 'aprobado', 'x_at': datetime.datetime.now(), 'x_avance': ini.x_avance, 'x_obs': ini.x_ceo_obs})
-    ini.write({'x_state': 'aprobado', 'x_ronda': ronda, 'x_ceo_user_id': env.user.id, 'x_ceo_at': datetime.datetime.now()})
-    ini.message_post(body='Inicio formal de obra APROBADO por ' + env.user.name + '.')
+    env['x_inicio_obra_ronda'].sudo().create({'x_name': 'Ronda %d' % ronda, 'x_inicio_id': ini.id, 'x_numero': ronda, 'x_resultado': 'aprobado', 'x_at': datetime.datetime.now(), 'x_avance': ini.x_avance, 'x_obs': ini.x_ceo_obs})
+    ini.write({'x_state': 'aprobado', 'x_ronda': ronda, 'x_ceo_user_id': actor.id, 'x_ceo_at': datetime.datetime.now()})
+    ini.sudo().message_post(body='Inicio formal de obra APROBADO por ' + actor.name + '.')
 '''
 
 CODE_OBSERVAR = r'''
-if not env.user.has_group('x_inicio_obra.group_ceo'): raise UserError('Solo el CEO puede devolver el inicio de obra.')
+actor = env.user  # la app móvil opera con la sesión Odoo del propio usuario
+COO_UID = 2
+GROUP_CEO = 'Inicio de obra · Aprobador (CEO)'
+
+if not actor.has_group('x_inicio_obra.group_ceo'): raise UserError('Solo el CEO puede devolver el inicio de obra.')
 # CEO devuelve como Observado: obs obligatoria; reabre áreas/ítems marcados en x_observada / x_observado (los elige el CEO en el form o la app).
 for ini in records:
     if ini.x_state != 'completo': raise UserError('Solo se puede observar un inicio completo.')
@@ -137,7 +151,7 @@ for ini in records:
     if not tareas and not items: raise UserError('Indicá qué áreas o ítems se reabren.')
     tareas |= items.mapped('x_tarea_id')
     ronda = (ini.x_ronda or 0) + 1
-    env['x_inicio_obra_ronda'].create({'x_name': 'Ronda %d' % ronda, 'x_inicio_id': ini.id, 'x_numero': ronda, 'x_resultado': 'observado', 'x_obs': ini.x_ceo_obs,
+    env['x_inicio_obra_ronda'].sudo().create({'x_name': 'Ronda %d' % ronda, 'x_inicio_id': ini.id, 'x_numero': ronda, 'x_resultado': 'observado', 'x_obs': ini.x_ceo_obs,
         'x_at': datetime.datetime.now(), 'x_avance': ini.x_avance, 'x_tarea_ids': [(6,0,tareas.ids)], 'x_item_ids': [(6,0,items.ids)]})
     reabrir = items or ini.x_item_ids.filtered(lambda i: i.x_tarea_id in tareas)
     reabrir.write({'x_hecho': False, 'x_hecho_user_id': False, 'x_hecho_at': False, 'x_hecho_usuario_id': False, 'x_observado': True})
@@ -145,22 +159,28 @@ for ini in records:
     ini.write({'x_state': 'observado', 'x_ronda': ronda, 'x_ceo_obs': False})
     for ta in tareas:
         us = env['x_inicio_obra_usuario'].search([('x_area_ids','in',ta.x_area_id.id),('x_active','=',True)]).mapped('x_user_id')
-        ini.message_post(body='Observado por CEO (ronda %d) · %s: %s' % (ronda, ta.x_name, ta.x_obs_ceo), partner_ids=us.mapped('partner_id').ids)
+        ini.sudo().message_post(body='Observado por CEO (ronda %d) · %s: %s' % (ronda, ta.x_name, ta.x_obs_ceo), partner_ids=us.mapped('partner_id').ids)
         for u in us:
-            ta.activity_schedule('mail.mail_activity_data_todo', user_id=u.id, date_deadline=datetime.date.today(),
+            ta.sudo().activity_schedule('mail.mail_activity_data_todo', user_id=u.id, date_deadline=datetime.date.today(),
                                  summary='Observado por CEO: corregir ' + ta.x_name, note=ta.x_obs_ceo)
 '''
 CODE_NO_APLICA = r'''
+actor = env.user  # la app móvil opera con la sesión Odoo del propio usuario
+COO_UID = 2
+GROUP_CEO = 'Inicio de obra · Aprobador (CEO)'
+
 for ta in records:
     if ta.x_no_aplica and not ta.x_no_aplica_at:
         if not (ta.x_no_aplica_motivo or '').strip(): raise UserError('Indicá el motivo de "No aplica a esta obra".')
-        u = env['x_inicio_obra_usuario'].search([('x_user_id','=',env.user.id)], limit=1)
+        u = env['x_inicio_obra_usuario'].search([('x_user_id','=',actor.id)], limit=1)
         ta.write({'x_no_aplica_at': datetime.datetime.now(), 'x_no_aplica_usuario_id': ta.x_no_aplica_usuario_id.id or u.id, 'x_completa': True})
-        ta.x_inicio_id.message_post(body='%s: No aplica a esta obra. Motivo: %s' % (ta.x_name, ta.x_no_aplica_motivo))
+        ta.x_inicio_id.sudo().message_post(body='%s: No aplica a esta obra. Motivo: %s' % (ta.x_name, ta.x_no_aplica_motivo))
     elif not ta.x_no_aplica and ta.x_no_aplica_at:
         ta.write({'x_no_aplica_at': False, 'x_no_aplica_usuario_id': False})
-    # dispara recálculo vía ítems
-    ta.x_inicio_id.x_item_ids[:1].write({'x_obs': ta.x_inicio_id.x_item_ids[:1].x_obs})
+# recálculo: corre la acción de ítems sobre los ítems de las OT afectadas (sin escribir ítems)
+its = records.mapped('x_inicio_id.x_item_ids')
+if its:
+    env['ir.actions.server'].search([('name','=','Inicio de obra · sellar ítem y recalcular')], limit=1).with_context(active_model='x_inicio_obra_item', active_ids=its.ids, active_id=its.ids[0]).run()
 '''
 CODE_VENCIMIENTOS = r'''
 # Cron diario: actividad Odoo al gerente de cada área no completa que vence en < 24 h o ya venció (una por día).
@@ -202,6 +222,7 @@ class Odoo:
         s.key = (os.environ.get("ODOO_API_KEY") or os.environ.get("ODOO_API_KEY_ADMIN_ARME","")).strip(); s.uid = int(os.environ.get("ODOO_UID","2"))
         if not s.key: sys.exit("Falta ODOO_API_KEY")
         s.m = xmlrpc.client.ServerProxy(s.url+"/xmlrpc/2/object", allow_none=True); s.apply = apply; s.log = []; s.n = 0
+    def fid(s, model, names): return s.r('ir.model.fields','search',[['model','=',model],['name','in',names]])
     def r(s, model, method, *a, **k): return s.m.execute_kw(s.db, s.uid, s.key, model, method, list(a), k)
     def create(s, model, vals, label):
         s.n += 1
@@ -274,10 +295,10 @@ def run(apply):
     sa_crear = o.create("ir.actions.server", {"name": "Inicio de obra · crear tareas por área", "model_id": o.r("ir.model","search",[["model","=","project.project"]])[0], "state": "code", "code": CODE_CREAR}, "server action crear")
     o.create("base.automation", {"name": "Inicio de obra · al crear OT", "model_id": o.r("ir.model","search",[["model","=","project.project"]])[0], "trigger": "on_create", "action_server_ids": [(6,0,[sa_crear])] if apply else []}, "automation on_create project.project (TODO proyecto nuevo)")
     sa_item = o.create("ir.actions.server", {"name": "Inicio de obra · sellar ítem y recalcular", "model_id": mid[f"{P}_item"], "state": "code", "code": hdr + CODE_ITEM}, "server action ítem")
-    o.create("base.automation", {"name": "Inicio de obra · ítem marcado", "model_id": mid[f"{P}_item"], "trigger": "on_create_or_write", "trigger_field_ids": [], "action_server_ids": [(6,0,[sa_item])] if apply else []}, "automation on_write x_hecho")
+    o.create("base.automation", {"name": "Inicio de obra · ítem marcado", "model_id": mid[f"{P}_item"], "trigger": "on_create_or_write", "trigger_field_ids": [(6,0,o.fid(f"{P}_item",["x_hecho"]))] if apply else [], "action_server_ids": [(6,0,[sa_item])] if apply else []}, "automation on_write x_hecho")
     sa_obs = o.create("ir.actions.server", {"name": "Devolver como Observado (CEO)", "model_id": mid[P], "state": "code", "code": hdr + CODE_OBSERVAR}, "server action observar CEO (botón)")
     sa_na = o.create("ir.actions.server", {"name": "Inicio de obra · No aplica", "model_id": mid[f"{P}_tarea"], "state": "code", "code": hdr + CODE_NO_APLICA}, "server action No aplica")
-    o.create("base.automation", {"name": "Inicio de obra · área No aplica / recalcular", "model_id": mid[f"{P}_tarea"], "trigger": "on_create_or_write", "action_server_ids": [(6,0,[sa_na])] if apply else []}, "automation on_write x_no_aplica (sella quién/cuándo, motivo obligatorio, recalcula)")
+    o.create("base.automation", {"name": "Inicio de obra · área No aplica / recalcular", "model_id": mid[f"{P}_tarea"], "trigger": "on_create_or_write", "trigger_field_ids": [(6,0,o.fid(f"{P}_tarea",["x_no_aplica","x_no_aplica_motivo"]))] if apply else [], "action_server_ids": [(6,0,[sa_na])] if apply else []}, "automation on_write x_no_aplica (sella quién/cuándo, motivo obligatorio, recalcula)")
     sa_venc = o.create("ir.actions.server", {"name": "Inicio de obra · avisos de vencimiento", "model_id": mid[f"{P}_tarea"], "state": "code", "code": hdr + CODE_VENCIMIENTOS}, "server action avisos vencimiento")
     sa_apr = o.create("ir.actions.server", {"name": "Aprobar inicio (CEO)", "model_id": mid[P], "state": "code", "code": hdr + CODE_APROBAR, "binding_model_id": mid[P]}, "server action aprobar CEO (botón)")
     print("5) Vistas, acción y menú (Proyecto > Inicio de obra)")
