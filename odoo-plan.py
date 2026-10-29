@@ -13,7 +13,7 @@ ROLES = "[('gerente','Gerente de área'),('secretaria','Secretaría COO'),('ugeo
 MODELS = [
  (f"{P}_usuario", "Inicio de obra · Usuario de la app", True, [
    ("x_login","char","Usuario (login app)",{}), ("x_email","char","Email",{}), ("x_rol","selection","Rol",{"selection":ROLES,"tracking":1}),
-   ("x_active","boolean","Activo",{"tracking":1}), ("x_user_id","many2one","Usuario Odoo (opcional)",{"relation":"res.users"}),
+   ("x_active","boolean","Activo",{"tracking":1}), ("x_user_id","many2one","Usuario Odoo",{"relation":"res.users","required":True}),
    ("x_clave_configurada","boolean","Clave configurada (en backend)",{"readonly":True})]),
  (f"{P}_area", "Inicio de obra · Área", False, [
    ("x_code","char","Código",{}), ("x_sequence","integer","Orden",{}), ("x_user_id","many2one","Usuario Odoo del gerente (opcional)",{"relation":"res.users"}),
@@ -117,7 +117,7 @@ for ini in records.mapped('x_inicio_id'):
         ini.write(vals)
 '''
 CODE_APROBAR = r'''
-if not env.user.has_group('base.group_system') and not env.user.groups_id.filtered(lambda g: g.name == GROUP_CEO):
+if not env.user.has_group('x_inicio_obra.group_ceo'):
     raise UserError('Solo el CEO puede aprobar el inicio de obra.')
 for ini in records:
     if ini.x_state != 'completo': raise UserError('Faltan ítems por completar.')
@@ -128,6 +128,7 @@ for ini in records:
 '''
 
 CODE_OBSERVAR = r'''
+if not env.user.has_group('x_inicio_obra.group_ceo'): raise UserError('Solo el CEO puede devolver el inicio de obra.')
 # CEO devuelve como Observado: obs obligatoria; reabre áreas/ítems marcados en x_observada / x_observado (los elige el CEO en el form o la app).
 for ini in records:
     if ini.x_state != 'completo': raise UserError('Solo se puede observar un inicio completo.')
@@ -143,9 +144,11 @@ for ini in records:
     tareas.write({'x_completa': False, 'x_no_aplica': False, 'x_obs_ceo': ini.x_ceo_obs})
     ini.write({'x_state': 'observado', 'x_ronda': ronda, 'x_ceo_obs': False})
     for ta in tareas:
-        ps = env['x_inicio_obra_usuario'].search([('x_area_ids','in',ta.x_area_id.id)]).mapped('x_user_id.partner_id')
-        ini.message_post(body='Observado por CEO (ronda %d) · %s: %s' % (ronda, ta.x_name, ta.x_obs_ceo), partner_ids=ps.ids)
-        # usuarios sin Odoo: el backend de la app les manda email (x_email) y lo muestra como pendiente
+        us = env['x_inicio_obra_usuario'].search([('x_area_ids','in',ta.x_area_id.id),('x_active','=',True)]).mapped('x_user_id')
+        ini.message_post(body='Observado por CEO (ronda %d) · %s: %s' % (ronda, ta.x_name, ta.x_obs_ceo), partner_ids=us.mapped('partner_id').ids)
+        for u in us:
+            ta.activity_schedule('mail.mail_activity_data_todo', user_id=u.id, date_deadline=fields.Date.today(),
+                                 summary='Observado por CEO: corregir ' + ta.x_name, note=ta.x_obs_ceo)
 '''
 CODE_NO_APLICA = r'''
 for ta in records:
@@ -158,6 +161,20 @@ for ta in records:
         ta.write({'x_no_aplica_at': False, 'x_no_aplica_usuario_id': False})
     # dispara recálculo vía ítems
     ta.x_inicio_id.x_item_ids[:1].write({'x_obs': ta.x_inicio_id.x_item_ids[:1].x_obs})
+'''
+CODE_VENCIMIENTOS = r'''
+# Cron diario: actividad Odoo al gerente de cada área no completa que vence en < 24 h o ya venció (una por día).
+ahora = datetime.datetime.now()
+if ahora.weekday() == 6: tareas = []  # domingo: sin avisos
+else: tareas = env['x_inicio_obra_tarea'].search([('x_completa','=',False),('x_no_aplica','=',False),('x_vence','!=',False),('x_inicio_id.x_state','in',['carga','observado'])])
+for ta in tareas:
+    if ta.x_vence - ahora > datetime.timedelta(hours=24): continue
+    txt = ('VENCIDO desde ' if ta.x_vence < ahora else 'Vence ') + str(ta.x_vence)[:16]
+    for u in env['x_inicio_obra_usuario'].search([('x_area_ids','in',ta.x_area_id.id),('x_active','=',True)]).mapped('x_user_id'):
+        if not env['mail.activity'].search_count([('res_model','=','x_inicio_obra_tarea'),('res_id','=',ta.id),('user_id','=',u.id),('date_deadline','=',fields.Date.today())]):
+            ta.activity_schedule('mail.mail_activity_data_todo', user_id=u.id, date_deadline=fields.Date.today(), summary='Inicio de obra · ' + ta.x_name + ': ' + txt)
+    if ta.x_vence < ahora:
+        ta.x_inicio_id.message_post(body='%s: checklist vencido (%s) — evidencia punto 2.2' % (ta.x_name, txt))
 '''
 def form_view(model):
     return f'''<form string="Inicio de obra"><header>
@@ -200,9 +217,11 @@ def run(apply):
     # Pre-chequeos (lecturas)
     exist = o.r("ir.model","search_read",[["model","like",P]],fields=["model"])
     if exist: sys.exit(f"Ya existen modelos {P}*: {[e['model'] for e in exist]} -> abortar (usar --rollback)")
-    uids = [u["user_id"] for u in mg["usuarios"] if u["user_id"]]
+    falt = [u["name"] for u in mg["usuarios"] if not u.get("user_id")]
+    if falt: sys.exit(f"Todo usuario de la app debe tener res.users: faltan {falt}")
+    uids = [u["user_id"] for u in mg["usuarios"]]
     ok_u = {u["id"]: u["name"] for u in o.r("res.users","read",uids,fields=["name"])}
-    print(f"Pre-chequeo: {len(ok_u)}/{len(set(uids))} usuarios de gerentes existen; sin usuario Odoo (entran por la tabla de la app): {[u['name'] for u in mg['usuarios'] if not u['user_id']]}")
+    print(f"Pre-chequeo: {len(ok_u)}/{len(set(uids))} usuarios de gerentes existen; áreas sin gerente: {[a['code'] for a in CHK['areas'] if not any(a['code'] in u['areas'] for u in mg['usuarios'])]}")
     if apply:  # backup de lo que toca (solo lectura previa para registro)
         snap = {"project_task_fields": sorted(k for k in o.r("project.task","fields_get",attributes=["type"]) if k.startswith("x_io")),
                 "automations": o.r("base.automation","search_read",[],fields=["name"])}
@@ -223,8 +242,12 @@ def run(apply):
         for fn, ft, fl, extra in flds:
             o.create("ir.model.fields", {"model_id": tid, "name": fn, "ttype": ft, "field_description": fl, "state": "manual", **extra}, f"  {target}.{fn} [{ft}]")
     print("2) Grupos y permisos")
-    g_ceo = o.create("res.groups", {"name": GROUP_CEO}, GROUP_CEO + f" (miembro: CEO={mg.get('CEO')})")
-    g_ver = o.create("res.groups", {"name": GROUP_VER}, GROUP_VER + f" (COO, secretaria, UGEOP)")
+    by_rol = lambda *r: [u["user_id"] for u in mg["usuarios"] if u["rol"] in r]
+    ceo_u, ver_u = by_rol("ceo"), by_rol("coo", "secretaria", "ugeop")
+    g_ceo = o.create("res.groups", {"name": GROUP_CEO, "user_ids": [(6,0,ceo_u)]}, GROUP_CEO + f" · miembros uid {ceo_u}")
+    g_ver = o.create("res.groups", {"name": GROUP_VER, "user_ids": [(6,0,ver_u)]}, GROUP_VER + f" · miembros uid {ver_u}")
+    o.create("ir.model.data", {"module": "x_inicio_obra", "name": "group_ceo", "model": "res.groups", "res_id": g_ceo}, "xmlid x_inicio_obra.group_ceo (para botones y has_group)")
+    o.create("ir.model.data", {"module": "x_inicio_obra", "name": "group_consolidado", "model": "res.groups", "res_id": g_ver}, "xmlid x_inicio_obra.group_consolidado")
     g_user = o.r("ir.model.data","search_read",[["module","=","base"],["name","=","group_user"]],fields=["res_id"])[0]["res_id"]
     for model in mid:
         cfg = model in (f"{P}_area", f"{P}_plantilla", f"{P}_usuario", f"{P}_ronda")
@@ -245,7 +268,7 @@ def run(apply):
     for u in mg["usuarios"]:
         o.create(f"{P}_usuario", {"x_name": u["name"], "x_rol": u["rol"], "x_active": True, "x_user_id": u["user_id"] or False,
                  "x_area_ids": [(6,0,[aid_by[c] for c in u["areas"]])] if apply else []},
-                 f"{u['name']} · {u['rol']} · áreas {','.join(u['areas']) or '-'} · res.users {u['user_id'] or 'NINGUNO (completar login/email)'}")
+                 f"{u['name']} · {u['rol']} · áreas {','.join(u['areas']) or '-'} · uid {u['user_id']} ({ok_u.get(u['user_id'],'NO EXISTE')})")
     print("4) Acciones de servidor y automatizaciones")
     hdr = f"COO_UID = {mg['COO']}\nGROUP_CEO = {GROUP_CEO!r}\n"
     sa_crear = o.create("ir.actions.server", {"name": "Inicio de obra · crear tareas por área", "model_id": o.r("ir.model","search",[["model","=","project.project"]])[0], "state": "code", "code": CODE_CREAR}, "server action crear")
@@ -255,10 +278,11 @@ def run(apply):
     sa_obs = o.create("ir.actions.server", {"name": "Devolver como Observado (CEO)", "model_id": mid[P], "state": "code", "code": hdr + CODE_OBSERVAR}, "server action observar CEO (botón)")
     sa_na = o.create("ir.actions.server", {"name": "Inicio de obra · No aplica", "model_id": mid[f"{P}_tarea"], "state": "code", "code": hdr + CODE_NO_APLICA}, "server action No aplica")
     o.create("base.automation", {"name": "Inicio de obra · área No aplica / recalcular", "model_id": mid[f"{P}_tarea"], "trigger": "on_create_or_write", "action_server_ids": [(6,0,[sa_na])] if apply else []}, "automation on_write x_no_aplica (sella quién/cuándo, motivo obligatorio, recalcula)")
+    sa_venc = o.create("ir.actions.server", {"name": "Inicio de obra · avisos de vencimiento", "model_id": mid[f"{P}_tarea"], "state": "code", "code": hdr + CODE_VENCIMIENTOS}, "server action avisos vencimiento")
     sa_apr = o.create("ir.actions.server", {"name": "Aprobar inicio (CEO)", "model_id": mid[P], "state": "code", "code": hdr + CODE_APROBAR, "binding_model_id": mid[P]}, "server action aprobar CEO (botón)")
     print("5) Vistas, acción y menú (Proyecto > Inicio de obra)")
     for model, vt, arch in VIEWS:
-        if arch == "form_view": arch = form_view(model).replace("__ACT_APROBAR__", str(sa_apr)).replace("__ACT_OBSERVAR__", str(sa_obs)).replace("__GROUP_CEO__", "base.group_system")
+        if arch == "form_view": arch = form_view(model).replace("__ACT_APROBAR__", str(sa_apr)).replace("__ACT_OBSERVAR__", str(sa_obs)).replace("__GROUP_CEO__", "x_inicio_obra.group_ceo")
         o.create("ir.ui.view", {"name": f"{model}.{vt}", "model": model, "type": vt, "arch_base": arch}, f"vista {vt} {model}")
     act = o.create("ir.actions.act_window", {"name": "Inicio de obra", "res_model": P, "view_mode": "list,form"}, "acción ventana")
     act_i = o.create("ir.actions.act_window", {"name": "Checklist consolidado", "res_model": f"{P}_item", "view_mode": "list"}, "acción consolidado")
@@ -267,8 +291,8 @@ def run(apply):
     act_u = o.create("ir.actions.act_window", {"name": "Usuarios de la app", "res_model": f"{P}_usuario", "view_mode": "list"}, "acción usuarios app (admin)")
     for nm, a, seq in (("Usuarios de la app", act_u, 53), ("Inicio de obra", act, 50), ("Checklist consolidado", act_i, 51), ("Áreas y gerentes", act_a, 52)):
         o.create("ir.ui.menu", {"name": nm, "parent_id": parent[0] if parent else False, "action": f"ir.actions.act_window,{a}", "sequence": seq}, f"menú {nm}")
+    o.create("ir.cron", {"name": "Inicio de obra · avisos de vencimiento", "ir_actions_server_id": sa_venc, "interval_number": 1, "interval_type": "days", "active": True}, "cron diario: actividades por vencimiento (lun-sáb)")
     print(f"== Total operaciones: {o.n}. {'Backup: '+o.bk if apply else 'Nada fue escrito.'}")
-    print("Nota: el botón CEO usa el grupo propio en prod (en dry-run se muestra base.group_system como placeholder); agregar CEO/COO/secretaria/UGEOP a los grupos al aplicar.")
 
 def rollback(path):
     o = Odoo(True); d = json.load(open(path))
