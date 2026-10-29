@@ -13,7 +13,7 @@ ROLES = "[('gerente','Gerente de área'),('secretaria','Secretaría COO'),('ugeo
 MODELS = [
  (f"{P}_usuario", "Inicio de obra · Usuario de la app", True, [
    ("x_login","char","Usuario (login app)",{}), ("x_email","char","Email",{}), ("x_rol","selection","Rol",{"selection":ROLES,"tracking":1}),
-   ("x_active","boolean","Activo",{"tracking":1}), ("x_user_id","many2one","Usuario Odoo",{"relation":"res.users","required":True}),
+   ("x_active","boolean","Activo",{"tracking":1}), ("x_user_id","many2one","Usuario Odoo",{"relation":"res.users","required":True,"on_delete":"restrict"}),
    ("x_clave_configurada","boolean","Clave configurada (en backend)",{"readonly":True})]),
  (f"{P}_area", "Inicio de obra · Área", False, [
    ("x_code","char","Código",{}), ("x_sequence","integer","Orden",{}), ("x_user_id","many2one","Usuario Odoo del gerente (opcional)",{"relation":"res.users"}),
@@ -75,7 +75,7 @@ for prj in records:
             h = min(horas, (fin_dia - d).total_seconds() / 3600.0); d = d + datetime.timedelta(hours=h); horas -= h
         return d
     for a in env['x_inicio_obra_area'].search([('x_active','=',True)], order='x_sequence'):
-        vence = vence_lun_sab(base, a.x_plazo_horas or 48)
+        vence = vence_lun_sab(base - datetime.timedelta(hours=3), a.x_plazo_horas or 48) + datetime.timedelta(hours=3)  # cuenta en hora AR (UTC-3)
         gerentes = env['x_inicio_obra_usuario'].search([('x_area_ids','in',a.id),('x_active','=',True)])
         t = env['project.task'].create({'name': 'Inicio de obra · ' + a.x_name, 'project_id': prj.id,
              'user_ids': [(6,0,gerentes.mapped('x_user_id').ids)], 'date_deadline': vence,
@@ -147,7 +147,7 @@ for ini in records:
         us = env['x_inicio_obra_usuario'].search([('x_area_ids','in',ta.x_area_id.id),('x_active','=',True)]).mapped('x_user_id')
         ini.message_post(body='Observado por CEO (ronda %d) · %s: %s' % (ronda, ta.x_name, ta.x_obs_ceo), partner_ids=us.mapped('partner_id').ids)
         for u in us:
-            ta.activity_schedule('mail.mail_activity_data_todo', user_id=u.id, date_deadline=fields.Date.today(),
+            ta.activity_schedule('mail.mail_activity_data_todo', user_id=u.id, date_deadline=datetime.date.today(),
                                  summary='Observado por CEO: corregir ' + ta.x_name, note=ta.x_obs_ceo)
 '''
 CODE_NO_APLICA = r'''
@@ -171,8 +171,8 @@ for ta in tareas:
     if ta.x_vence - ahora > datetime.timedelta(hours=24): continue
     txt = ('VENCIDO desde ' if ta.x_vence < ahora else 'Vence ') + str(ta.x_vence)[:16]
     for u in env['x_inicio_obra_usuario'].search([('x_area_ids','in',ta.x_area_id.id),('x_active','=',True)]).mapped('x_user_id'):
-        if not env['mail.activity'].search_count([('res_model','=','x_inicio_obra_tarea'),('res_id','=',ta.id),('user_id','=',u.id),('date_deadline','=',fields.Date.today())]):
-            ta.activity_schedule('mail.mail_activity_data_todo', user_id=u.id, date_deadline=fields.Date.today(), summary='Inicio de obra · ' + ta.x_name + ': ' + txt)
+        if not env['mail.activity'].search_count([('res_model','=','x_inicio_obra_tarea'),('res_id','=',ta.id),('user_id','=',u.id),('date_deadline','=',datetime.date.today())]):
+            ta.activity_schedule('mail.mail_activity_data_todo', user_id=u.id, date_deadline=datetime.date.today(), summary='Inicio de obra · ' + ta.x_name + ': ' + txt)
     if ta.x_vence < ahora:
         ta.x_inicio_id.message_post(body='%s: checklist vencido (%s) — evidencia punto 2.2' % (ta.x_name, txt))
 '''
@@ -185,7 +185,7 @@ def form_view(model):
 <field name="x_items_ok"/><field name="x_items_total"/><field name="x_completo_at"/><field name="x_ceo_user_id"/><field name="x_ceo_at"/><field name="x_ceo_obs"/></group>
 <notebook><page string="Áreas"><field name="x_tarea_ids"><list editable="bottom"><field name="x_area_id"/><field name="x_vence"/><field name="x_completa"/><field name="x_no_aplica"/><field name="x_no_aplica_motivo"/><field name="x_no_aplica_usuario_id" readonly="1"/><field name="x_no_aplica_at" readonly="1"/><field name="x_observada"/><field name="x_obs_ceo" readonly="1"/></list></field></page>
 <page string="Rondas CEO"><field name="x_ronda_ids" readonly="1"><list><field name="x_numero"/><field name="x_resultado"/><field name="x_obs"/><field name="x_usuario_id"/><field name="x_at"/><field name="x_tarea_ids" widget="many2many_tags"/></list></field></page>
-<page string="Ítems"><field name="x_item_ids"><list editable="bottom" default_group_by="x_area_id"><field name="x_area_id"/><field name="x_name"/><field name="x_hecho"/>
+<page string="Ítems"><field name="x_item_ids"><list editable="bottom"><field name="x_area_id"/><field name="x_name"/><field name="x_hecho"/>
 <field name="x_hecho_user_id" readonly="1"/><field name="x_hecho_at" readonly="1"/><field name="x_vence" readonly="1"/><field name="x_fuera_termino" readonly="1"/><field name="x_observado"/><field name="x_obs"/></list></field></page></notebook>
 </sheet><chatter/></form>'''
 VIEWS = [
