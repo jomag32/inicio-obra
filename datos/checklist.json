@@ -1,0 +1,77 @@
+{"plazo_horas_default":48,
+"areas":[
+{"code":"COM","name":"Comercial","plazo_h":24,"items":[
+ "OT creada en Odoo con cliente, ubicación y tipo de obra",
+ "Términos comerciales acordados y pasados a Legales (contrato / FCI)",
+ "Calendario de cobros, certificaciones e hitos de facturación cargado y enviado a Tesorería",
+ "Documentación técnica y comercial (planos, anexos, alcance) entregada a UGEOP y Legales|adj",
+ "Requisitos de seguridad del cliente para ingreso a predio informados (documentación y anticipación)",
+ "Ubicación, accesos y requisitos del lugar informados a Logística (choferes, grúas, equipos certificados)",
+ "Vehículos afectados a la obra desde el inicio informados a Logística"]},
+{"code":"LEG","name":"Legales","plazo_h":72,"items":[
+ "Contrato o Ficha Contractual Interna (FCI) elaborado|adj",
+ "FCI completa: partes y obra, alcance, plazo, precio y pago, garantía, adicionales, conformidad del cliente",
+ "Garantías del contrato registradas (pólizas de caución, fondo de reparo)|adj",
+ "Seguros de obra vigentes (RC, todo riesgo construcción)|adj",
+ "Seguros del personal (RRHH) verificados contra el contrato (ej. no repetición)",
+ "Permiso municipal de obra y documentación de ingreso a predios de terceros|adj",
+ "Exigencias del contrato sobre certificación de choferes, grúas y equipos informadas a Logística",
+ "Subcontratos con tercerizados formalizados (si aplica)",
+ "Acta de inicio redactada / validada|adj",
+ "Tarea de Legales cargada en el Gantt con sus hitos"]},
+{"code":"PRE","name":"Presupuesto y Cálculo","plazo_h":48,"items":[
+ "Cálculo, costo y presupuesto de la obra cargados en Odoo|adj",
+ "Presupuesto aprobado y alcance del proyecto confirmados",
+ "Maquinaria y equipos cotizados con horas de uso informados a Logística",
+ "Vehículos cotizados que quedan afectados a la obra informados"]},
+{"code":"UGE","name":"UGEOP","plazo_h":48,"items":[
+ "Gantt único de la OT armado con una tarea por área",
+ "Hitos de obra con fecha planificada cargados (críticos marcados para ATS)",
+ "Coherencia contrato/FCI – cronograma – presupuesto verificada",
+ "Relevamiento de campo y planos cargados|adj",
+ "OF emitidas a Fábrica",
+ "Ubicación y condiciones de acceso relevadas informadas a Logística",
+ "Equipos necesarios (toneladas, altura, radio), carga especial y cantidad de choferes/operadores informados a Logística",
+ "Control: calendario de cobros llegó a Tesorería"]},
+{"code":"FAB","name":"Fábrica","plazo_h":48,"items":[
+ "OT y OF recibidas de Técnica",
+ "Disponibilidad de materiales verificada con Stock",
+ "Fabricación programada según prioridades del Gantt",
+ "Fechas planificadas de inicio y fin de cada OF cargadas (Control de Gestión)"]},
+{"code":"COP","name":"Compras","plazo_h":48,"items":[
+ "Listado de materiales críticos con fechas de necesidad recibido de Técnica",
+ "Proveedores cotizados y seleccionados para ítems críticos",
+ "Entregas programadas según avance de obra",
+ "Recepción y trazabilidad en depósito de obra coordinada con Stock",
+ "Elementos de seguridad de la Ficha de Riesgos comprados antes del hito"]},
+{"code":"STK","name":"Stock","plazo_h":48,"items":[
+ "Depósito exclusivo de la obra creado en Odoo",
+ "Primeros ingresos coordinados con Compras y Fábrica",
+ "Trazabilidad activa desde el primer movimiento",
+ "Costos y cantidades reales cargados (indicador IDFSO activo)"]},
+{"code":"LOG","name":"Logística","plazo_h":72,"items":[
+ "Información mínima recibida: ubicación y acceso",
+ "Información mínima recibida: equipos, capacidad y alcance; carga especial",
+ "Información mínima recibida: horas de uso cotizadas y vehículos en obra",
+ "Información mínima recibida: choferes/operadores y requisitos del lugar",
+ "Accesos analizados",
+ "Plan de equipos y vehículos definido|adj",
+ "Choferes y operadores habilitados",
+ "Requisitos del lugar cumplidos"]},
+{"code":"TES","name":"Tesorería","plazo_h":48,"items":[
+ "Calendario de cobros y condiciones recibido de Comercial",
+ "Centros de costo y cuenta analítica de la obra configurados",
+ "Flujo de fondos previsto y compromisos de pago (incluye pólizas y garantías) definidos|adj",
+ "Imputación de ingresos y egresos supervisada desde el inicio"]},
+{"code":"RRH","name":"RRHH","plazo_h":48,"items":[
+ "Personal operativo y técnico asignado en Odoo",
+ "Seguro de accidentes personales (socios) / ART (dependencia) vigente según contrato|adj",
+ "Nómina de obra con documentación enviada a Higiene y Seguridad|adj",
+ "Habilitaciones de choferes y operadores verificadas y comunicadas a Logística",
+ "Dispositivo con acceso a Odoo para la obra solicitado a Sistemas"]},
+{"code":"HYS","name":"Higiene y Seguridad","plazo_h":48,"items":[
+ "Ficha de Riesgos de Obra (FRO) aprobada dentro de las 48 h hábiles|adj",
+ "Personal habilitado: nómina, seguro, inducción y EPP registrados",
+ "ATS de hitos críticos programados en el Gantt",
+ "Inspección de apertura de obra programada"]}
+]}
