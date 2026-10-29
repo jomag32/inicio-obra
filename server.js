@@ -14,10 +14,14 @@ const KEY = crypto.createHash("sha256").update(SECRET).digest();
 
 // ---------- Odoo JSON-RPC ----------
 let rid = 0;
-async function rpc(service, method, args) {
+async function rpc(service, method, args, intento = 0) {
   const r = await fetch(ODOO_URL + "/jsonrpc", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", id: ++rid, params: { service, method, args } }) });
-  const j = await r.json();
+  const txt = await r.text(); let j;
+  try { j = JSON.parse(txt); } catch {
+    if (intento < 3 && (r.status === 429 || r.status >= 500)) { await new Promise((ok) => setTimeout(ok, 700 * (intento + 1))); return rpc(service, method, args, intento + 1); }
+    throw new Error("Odoo respondió " + r.status);
+  }
   if (j.error) { const m = j.error.data?.message || j.error.message || "Error de Odoo"; const e = new Error(m); e.odoo = true; throw e; }
   return j.result;
 }
@@ -48,13 +52,16 @@ async function datos(s) {
   const obras = await ex(s, "x_inicio_obra", "search_read", [["|", ["x_state", "!=", "aprobado"], ["x_ceo_at", ">=", desde]]],
     { fields: ["x_name", "x_project_id", "x_state", "x_ronda", "create_date"], order: "id desc", limit: 60 });
   const ids = obras.map((o) => o.id);
-  const [areas, tareas, items, rondas, usuarios] = await Promise.all([
-    ex(s, "x_inicio_obra_area", "search_read", [[["x_active", "=", true]]], { fields: ["x_code", "x_name", "x_plazo_horas"], order: "x_sequence" }),
-    ex(s, "x_inicio_obra_tarea", "search_read", [[["x_inicio_id", "in", ids]]], { fields: ["x_inicio_id", "x_area_id", "x_vence", "x_no_aplica", "x_no_aplica_motivo", "x_no_aplica_usuario_id", "x_no_aplica_at", "x_observada", "x_obs_ceo"] }),
-    ex(s, "x_inicio_obra_item", "search_read", [[["x_inicio_id", "in", ids]]], { fields: ["x_inicio_id", "x_area_id", "x_tarea_id", "x_name", "x_requiere_adjunto", "x_vence", "x_hecho", "x_hecho_user_id", "x_hecho_at", "x_observado"], order: "x_sequence, id" }),
-    ex(s, "x_inicio_obra_ronda", "search_read", [[["x_inicio_id", "in", ids]]], { fields: ["x_inicio_id", "x_numero", "x_resultado", "x_obs", "x_at", "x_tarea_ids"], order: "x_numero" }),
-    ex(s, "x_inicio_obra_usuario", "search_read", [[]], { fields: ["x_name", "x_login", "x_rol", "x_area_ids", "x_active", "x_user_id"], context: { active_test: false } }),
-  ]);
+  const consultas = [
+    () => ex(s, "x_inicio_obra_area", "search_read", [[["x_active", "=", true]]], { fields: ["x_code", "x_name", "x_plazo_horas"], order: "x_sequence" }),
+    () => ex(s, "x_inicio_obra_tarea", "search_read", [[["x_inicio_id", "in", ids]]], { fields: ["x_inicio_id", "x_area_id", "x_vence", "x_no_aplica", "x_no_aplica_motivo", "x_no_aplica_usuario_id", "x_no_aplica_at", "x_observada", "x_obs_ceo"] }),
+    () => ex(s, "x_inicio_obra_item", "search_read", [[["x_inicio_id", "in", ids]]], { fields: ["x_inicio_id", "x_area_id", "x_tarea_id", "x_name", "x_requiere_adjunto", "x_vence", "x_hecho", "x_hecho_user_id", "x_hecho_at", "x_observado"], order: "x_sequence, id" }),
+    () => ex(s, "x_inicio_obra_ronda", "search_read", [[["x_inicio_id", "in", ids]]], { fields: ["x_inicio_id", "x_numero", "x_resultado", "x_obs", "x_at", "x_tarea_ids"], order: "x_numero" }),
+    () => ex(s, "x_inicio_obra_usuario", "search_read", [[]], { fields: ["x_name", "x_login", "x_rol", "x_area_ids", "x_active", "x_user_id"], context: { active_test: false } }),
+  ];
+  const res = [];
+  for (const f of consultas) res.push(await f()); // en serie: Odoo SaaS limita ráfagas paralelas
+  const [areas, tareas, items, rondas, usuarios] = res;
   const itemIds = items.map((i) => i.id);
   const adj = itemIds.length ? await ex(s, "ir.attachment", "search_read", [[["res_model", "=", "x_inicio_obra_item"], ["res_id", "in", itemIds]]], { fields: ["name", "res_id"] }) : [];
   const usu = new Map(usuarios.map((u) => [u.id, m2o(u.x_user_id)]));
