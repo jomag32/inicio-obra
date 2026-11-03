@@ -1,2 +1,4 @@
 *.local.json
 node_modules/
+odoo/backup-*.json
+__pycache__/
