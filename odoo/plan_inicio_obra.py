@@ -224,7 +224,7 @@ def form_view(model):
 VIEWS = [
  (P, "form", "form_view"),
  (P, "list", f'<list><field name="x_name"/><field name="x_project_id"/><field name="x_avance" widget="progressbar"/><field name="x_state"/><field name="x_ceo_at"/></list>'),
- (f"{P}_item", "list", '<list default_group_by="x_inicio_id"><field name="x_inicio_id"/><field name="x_area_id"/><field name="x_name"/><field name="x_hecho"/><field name="x_hecho_user_id"/><field name="x_hecho_at"/><field name="x_vence"/><field name="x_fuera_termino"/></list>'),
+ (f"{P}_item", "list", '<list default_group_by="x_inicio_id"><field name="x_inicio_id"/><field name="x_area_id"/><field name="x_name"/><field name="x_hecho"/><field name="x_hecho_user_id"/><field name="x_hecho_at"/><field name="x_vence"/><field name="x_fuera_termino"/><field name="x_no_aplica"/><field name="x_no_aplica_motivo" optional="show"/><field name="x_no_aplica_user_id" optional="show"/><field name="x_no_aplica_at" optional="hide"/><field name="x_obs" optional="show"/></list>'),
  (f"{P}_usuario", "list", '<list editable="bottom"><field name="x_name"/><field name="x_login"/><field name="x_email"/><field name="x_rol"/><field name="x_area_ids" widget="many2many_tags"/><field name="x_user_id"/><field name="x_active"/><field name="x_clave_configurada" readonly="1"/></list>'),
  (f"{P}_area", "list", '<list editable="bottom"><field name="x_sequence" widget="handle"/><field name="x_code"/><field name="x_name"/><field name="x_plazo_horas"/><field name="x_active"/></list>'),
 ]
