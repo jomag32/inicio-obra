@@ -10,6 +10,9 @@ P = "x_inicio_obra"
 
 # ---------- modelos y campos ----------
 ROLES = "[('gerente','Gerente de área'),('secretaria','Secretaría COO'),('ugeop','UGEOP'),('coo','COO'),('ceo','CEO')]"
+# «No aplica» por ítem (aditivo; para una base existente usar migrar_no_aplica_item.py)
+NA_ITEM_FIELDS = [("x_no_aplica","boolean","No aplica (ítem)",{"tracking":1}), ("x_no_aplica_motivo","text","No aplica: motivo",{"tracking":1}),
+   ("x_no_aplica_user_id","many2one","No aplica: marcado por",{"relation":"res.users","tracking":1}), ("x_no_aplica_at","datetime","No aplica: fecha",{"tracking":1})]
 MODELS = [
  (f"{P}_usuario", "Inicio de obra · Usuario de la app", True, [
    ("x_login","char","Usuario (login app)",{}), ("x_email","char","Email",{}), ("x_rol","selection","Rol",{"selection":ROLES,"tracking":1}),
@@ -48,7 +51,7 @@ MODELS = [
    ("x_hecho_at","datetime","Marcado el",{"tracking":1}),
    ("x_hecho_usuario_id","many2one","Marcado por (usuario app)",{"relation":f"{P}_usuario","tracking":1}),
    ("x_tarea_id","many2one","Área por obra",{"relation":f"{P}_tarea","on_delete":"cascade"}), ("x_observado","boolean","Observado por CEO",{"tracking":1}), ("x_vence","datetime","Vence",{}),
-   ("x_fuera_termino","boolean","Fuera de término",{"tracking":1}), ("x_obs","text","Observación",{})]),
+   ("x_fuera_termino","boolean","Fuera de término",{"tracking":1}), ("x_obs","text","Observación",{})] + NA_ITEM_FIELDS),
 ]
 TASK_FIELDS = [("x_io_inicio_id","many2one","Inicio de obra",{"relation":P}), ("x_io_area_id","many2one","Área inicio de obra",{"relation":f"{P}_area"})]
 PROJECT_FIELDS = [("x_io_inicio_id","many2one","Inicio de obra",{"relation":P})]
@@ -94,7 +97,15 @@ COO_UID = 2
 GROUP_CEO = 'Inicio de obra · Aprobador (CEO)'
 
 # Sello de evidencia (2.2): quién y cuándo, lo pone el servidor. Recalcula avance; si 100% avisa al COO.
+NA = bool(env['ir.model.fields'].sudo().search_count([('model','=','x_inicio_obra_item'),('name','=','x_no_aplica')]))  # compatible con bases sin «No aplica» por ítem
+res = lambda i: bool(i.x_hecho or (NA and i.x_no_aplica))  # resuelto = cumplido o no aplica
 for it in records:
+    if NA and it.x_no_aplica and not it.x_no_aplica_at:  # «No aplica» del ítem: sella quién/cuándo; no es «fuera de término»
+        it.write({'x_no_aplica_user_id': actor.id, 'x_no_aplica_at': datetime.datetime.now(), 'x_hecho': False, 'x_hecho_user_id': False, 'x_hecho_at': False, 'x_fuera_termino': False, 'x_observado': False})
+        it.x_inicio_id.sudo().message_post(body='%s · %s: No aplica%s' % (it.x_tarea_id.x_name or '', it.x_name, (': ' + it.x_no_aplica_motivo) if it.x_no_aplica_motivo else ''))
+        continue
+    if NA and not it.x_no_aplica and it.x_no_aplica_at:
+        it.write({'x_no_aplica_user_id': False, 'x_no_aplica_at': False, 'x_no_aplica_motivo': False})
     if it.x_hecho and not it.x_hecho_at:
         if it.x_requiere_adjunto and not env['ir.attachment'].search_count([('res_model','=','x_inicio_obra_item'),('res_id','=',it.id)]):
             raise UserError('Este ítem requiere un adjunto antes de marcarlo: ' + it.x_name)
@@ -106,12 +117,12 @@ for ini in records.mapped('x_inicio_id'):
     for ta in ini.x_tarea_ids:
         if ta.x_no_aplica and not (ta.x_no_aplica_motivo or '').strip(): raise UserError('"No aplica" requiere motivo: ' + ta.x_name)
         its = ini.x_item_ids.filtered(lambda i: i.x_tarea_id == ta)
-        ta.write({'x_completa': bool(ta.x_no_aplica or all(its.mapped('x_hecho')))})
+        ta.write({'x_completa': bool(ta.x_no_aplica or all(res(i) for i in its))})
     vivos = ini.x_item_ids.filtered(lambda i: not i.x_tarea_id.x_no_aplica)
-    tot = len(ini.x_item_ids); ok = len(vivos.filtered('x_hecho')) + (tot - len(vivos))
+    tot = len(ini.x_item_ids); ok = len(vivos.filtered(res)) + (tot - len(vivos))
     vals = {'x_items_total': tot, 'x_items_ok': ok, 'x_avance': (100.0*ok/tot) if tot else 0}
     for t in ini.x_item_ids.mapped('x_task_id'):
-        pend = t.x_io_inicio_id and ini.x_item_ids.filtered(lambda i: i.x_task_id == t and not i.x_hecho)
+        pend = t.x_io_inicio_id and ini.x_item_ids.filtered(lambda i: i.x_task_id == t and not res(i))
         t.sudo().write({'state': '01_in_progress' if pend else '1_done'})
     if tot and all(ini.x_tarea_ids.mapped('x_completa')) and ini.x_state in ('carga','observado'):
         vals.update({'x_state': 'completo', 'x_completo_at': datetime.datetime.now()})
@@ -154,7 +165,9 @@ for ini in records:
     env['x_inicio_obra_ronda'].sudo().create({'x_name': 'Ronda %d' % ronda, 'x_inicio_id': ini.id, 'x_numero': ronda, 'x_resultado': 'observado', 'x_obs': ini.x_ceo_obs,
         'x_at': datetime.datetime.now(), 'x_avance': ini.x_avance, 'x_tarea_ids': [(6,0,tareas.ids)], 'x_item_ids': [(6,0,items.ids)]})
     reabrir = items or ini.x_item_ids.filtered(lambda i: i.x_tarea_id in tareas)
-    reabrir.write({'x_hecho': False, 'x_hecho_user_id': False, 'x_hecho_at': False, 'x_hecho_usuario_id': False, 'x_observado': True})
+    vals_re = {'x_hecho': False, 'x_hecho_user_id': False, 'x_hecho_at': False, 'x_hecho_usuario_id': False, 'x_observado': True}
+    if env['ir.model.fields'].sudo().search_count([('model','=','x_inicio_obra_item'),('name','=','x_no_aplica')]): vals_re.update({'x_no_aplica': False, 'x_no_aplica_motivo': False, 'x_no_aplica_user_id': False, 'x_no_aplica_at': False})
+    reabrir.write(vals_re)
     tareas.write({'x_completa': False, 'x_no_aplica': False, 'x_obs_ceo': ini.x_ceo_obs})
     ini.write({'x_state': 'observado', 'x_ronda': ronda, 'x_ceo_obs': False})
     for ta in tareas:
@@ -206,7 +219,7 @@ def form_view(model):
 <notebook><page string="Áreas"><field name="x_tarea_ids"><list editable="bottom"><field name="x_area_id"/><field name="x_vence"/><field name="x_completa"/><field name="x_no_aplica"/><field name="x_no_aplica_motivo"/><field name="x_no_aplica_usuario_id" readonly="1"/><field name="x_no_aplica_at" readonly="1"/><field name="x_observada"/><field name="x_obs_ceo" readonly="1"/></list></field></page>
 <page string="Rondas CEO"><field name="x_ronda_ids" readonly="1"><list><field name="x_numero"/><field name="x_resultado"/><field name="x_obs"/><field name="x_usuario_id"/><field name="x_at"/><field name="x_tarea_ids" widget="many2many_tags"/></list></field></page>
 <page string="Ítems"><field name="x_item_ids"><list editable="bottom"><field name="x_area_id"/><field name="x_name"/><field name="x_hecho"/>
-<field name="x_hecho_user_id" readonly="1"/><field name="x_hecho_at" readonly="1"/><field name="x_vence" readonly="1"/><field name="x_fuera_termino" readonly="1"/><field name="x_observado"/><field name="x_obs"/></list></field></page></notebook>
+<field name="x_hecho_user_id" readonly="1"/><field name="x_hecho_at" readonly="1"/><field name="x_vence" readonly="1"/><field name="x_fuera_termino" readonly="1"/><field name="x_no_aplica"/><field name="x_no_aplica_motivo"/><field name="x_no_aplica_user_id" readonly="1"/><field name="x_no_aplica_at" readonly="1"/><field name="x_observado"/><field name="x_obs"/></list></field></page></notebook>
 </sheet><chatter/></form>'''
 VIEWS = [
  (P, "form", "form_view"),
@@ -295,7 +308,7 @@ def run(apply):
     sa_crear = o.create("ir.actions.server", {"name": "Inicio de obra · crear tareas por área", "model_id": o.r("ir.model","search",[["model","=","project.project"]])[0], "state": "code", "code": CODE_CREAR}, "server action crear")
     o.create("base.automation", {"name": "Inicio de obra · al crear OT", "model_id": o.r("ir.model","search",[["model","=","project.project"]])[0], "trigger": "on_create", "action_server_ids": [(6,0,[sa_crear])] if apply else []}, "automation on_create project.project (TODO proyecto nuevo)")
     sa_item = o.create("ir.actions.server", {"name": "Inicio de obra · sellar ítem y recalcular", "model_id": mid[f"{P}_item"], "state": "code", "code": hdr + CODE_ITEM}, "server action ítem")
-    o.create("base.automation", {"name": "Inicio de obra · ítem marcado", "model_id": mid[f"{P}_item"], "trigger": "on_create_or_write", "trigger_field_ids": [(6,0,o.fid(f"{P}_item",["x_hecho"]))] if apply else [], "action_server_ids": [(6,0,[sa_item])] if apply else []}, "automation on_write x_hecho")
+    o.create("base.automation", {"name": "Inicio de obra · ítem marcado", "model_id": mid[f"{P}_item"], "trigger": "on_create_or_write", "trigger_field_ids": [(6,0,o.fid(f"{P}_item",["x_hecho","x_no_aplica"]))] if apply else [], "action_server_ids": [(6,0,[sa_item])] if apply else []}, "automation on_write x_hecho")
     sa_obs = o.create("ir.actions.server", {"name": "Devolver como Observado (CEO)", "model_id": mid[P], "state": "code", "code": hdr + CODE_OBSERVAR}, "server action observar CEO (botón)")
     sa_na = o.create("ir.actions.server", {"name": "Inicio de obra · No aplica", "model_id": mid[f"{P}_tarea"], "state": "code", "code": hdr + CODE_NO_APLICA}, "server action No aplica")
     o.create("base.automation", {"name": "Inicio de obra · área No aplica / recalcular", "model_id": mid[f"{P}_tarea"], "trigger": "on_create_or_write", "trigger_field_ids": [(6,0,o.fid(f"{P}_tarea",["x_no_aplica","x_no_aplica_motivo"]))] if apply else [], "action_server_ids": [(6,0,[sa_na])] if apply else []}, "automation on_write x_no_aplica (sella quién/cuándo, motivo obligatorio, recalcula)")

@@ -10,7 +10,8 @@ const ROL = { gerente: "Gerente", ugeop: "UGEOP", secretaria: "Secretaría COO",
 if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js");
 const nom = (db, id) => db.usuarios.find((x) => x.id === id)?.nombre || "";
 const avance = (db, ot) => Math.round((100 * db.areas.filter((a) => api.areaCompleta(db, ot, a.id)).length) / db.areas.length);
-const pctItems = (db, ot) => { const its = db.items.filter((i) => i.ot === ot && !db.tareas.find((t) => t.ot === ot && t.area_id === i.area_id).no_aplica), n = db.items.filter((i) => i.ot === ot).length; return Math.round((100 * (its.filter((i) => i.hecho).length + n - its.length)) / n); };
+const pctItems = (db, ot) => { const its = db.items.filter((i) => i.ot === ot && !db.tareas.find((t) => t.ot === ot && t.area_id === i.area_id).no_aplica), n = db.items.filter((i) => i.ot === ot).length; return Math.round((100 * (its.filter(api.resuelto).length + n - its.length)) / n); };
+const esc = (x) => String(x || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
 function encabezado(u) { $("#enc").innerHTML = `<div><b>Tecnología ARME</b><small>Inicio de obra${u ? " · " + u.nombre : ""}</small></div>${u ? '<a href="#/salir">Salir</a>' : ""}`; }
 function tabs(u, on) { const t = [["#/", u.rol === "gerente" ? "Mis pendientes" : "Obras"]]; if (["coo", "secretaria"].includes(u.rol)) t.push(["#/usuarios", "Usuarios"]);
@@ -30,7 +31,7 @@ async function inicio(u) {
     const [et, ec] = ESTADO[ot.estado];
     if (u.rol === "gerente" || u.rol === "ugeop" && false) {
       for (const aid of u.areas) { const a = db.areas.find((x) => x.id === aid), t = db.tareas.find((x) => x.ot === ot.id && x.area_id === aid), its = db.items.filter((i) => i.ot === ot.id && i.area_id === aid);
-        const pend = t.no_aplica ? 0 : its.filter((i) => !i.hecho).length, tarde = pend && new Date(t.vence) < new Date(), p = t.no_aplica ? 100 : Math.round((100 * (its.length - pend)) / its.length);
+        const pend = t.no_aplica ? 0 : its.filter((i) => !api.resuelto(i)).length, tarde = pend && new Date(t.vence) < new Date(), p = t.no_aplica ? 100 : Math.round((100 * (its.length - pend)) / its.length);
         html += `<div class="card"><a href="#/ot/${ot.id}/area/${aid}"><div class="row"><b>${ot.name}</b><span class="tag ${t.no_aplica ? "" : pend ? (tarde || t.observada ? "r" : "a") : "v"}">${t.no_aplica ? "No aplica" : t.observada && pend ? "Observado CEO" : pend ? pend + " pendientes" : "Completo"}</span></div>
         <div class="muted">${a.name} · vence ${fmt(t.vence)}${tarde ? " · <b style='color:#b42318'>vencido</b>" : ""}</div>${bar(p)}<div class="muted">Avance general de la OT: ${avance(db, ot.id)}% · ${et}</div></a></div>`; }
     } else {
@@ -42,33 +43,38 @@ async function inicio(u) {
 }
 async function area(u, otId, aid) {
   const db = await api.cargar(), ot = db.obras.find((o) => o.id === otId), a = db.areas.find((x) => x.id === aid), t = db.tareas.find((x) => x.ot === otId && x.area_id === aid);
-  const its = db.items.filter((i) => i.ot === otId && i.area_id === aid), mia = u.areas.includes(aid), p = t.no_aplica ? 100 : Math.round((100 * its.filter((i) => i.hecho).length) / its.length);
+  const its = db.items.filter((i) => i.ot === otId && i.area_id === aid), mia = u.areas.includes(aid), p = t.no_aplica ? 100 : Math.round((100 * its.filter(api.resuelto).length) / its.length);
   const resp = db.usuarios.filter((x) => x.areas.includes(aid)).map((x) => x.nombre).join(", ");
   const g = (await guia()).areas[a.code] || { manual: "", items: [] }, gi = (i, k) => g.items.find((x) => x.item === i.name) || g.items[k];
   app.innerHTML = `<a href="#/${u.rol === "gerente" ? "" : "ot/" + otId}" class="muted">‹ Volver</a><h2>${ot.name}</h2>
   ${t.observada ? `<div class="card" style="border-left:4px solid #b42318"><b style="color:#b42318">Observado por el CEO</b><div>${t.obs_ceo}</div><div class="muted">Corregí y volvé a marcar los ítems.</div></div>` : ""}
-  <div class="card"><div class="row"><b>${a.name}</b><span class="muted">${p}%</span></div>${bar(p)}<div class="muted">Vence ${fmt(t.vence)} (hs lun–sáb) · responsable: ${resp}</div>
+  <div class="card"><div class="row"><b>${a.name}</b><span class="muted">${p}%</span></div>${bar(p)}<div class="muted">${t.no_aplica ? "Área completa: no aplica" : `${its.filter((i) => i.hecho).length} cumplidos · ${its.filter((i) => i.no_aplica).length} no aplican · ${its.filter((i) => !api.resuelto(i)).length} pendientes`}</div><div class="muted">Vence ${fmt(t.vence)} (hs lun–sáb) · responsable: ${resp}</div>
    ${g.manual ? `<details class="guia"><summary>📘 Cómo completar esta área</summary><p>${g.manual}</p></details>` : ""}</div>
-  <div class="card"><label class="row" style="justify-content:flex-start;gap:10px"><input type="checkbox" id="na" ${t.no_aplica ? "checked" : ""} ${mia ? "" : "disabled"} style="width:24px;height:24px"><b>No aplica a esta obra</b></label>
+  <div class="card"><label class="row" style="justify-content:flex-start;gap:10px"><input type="checkbox" id="na" ${t.no_aplica ? "checked" : ""} ${mia ? "" : "disabled"} style="width:24px;height:24px"><b>No aplica a esta obra</b></label><div class="muted" style="font-size:12px">Atajo para toda el área. Si solo algún ítem no aplica, usá «No aplica» en ese ítem.</div>
    ${t.no_aplica ? `<div class="muted">Motivo: ${t.motivo}</div><div class="muted">✔ ${nom(db, t.na_por)} · ${fmt(t.na_at)}</div>` : mia ? `<div id="nabox" hidden><textarea id="motivo" rows="2" placeholder="Motivo (obligatorio)"></textarea><button class="btn sec" id="naok">Confirmar «No aplica»</button></div>` : ""}</div>
-  ${t.no_aplica ? "" : `<div class="card">${its.map((i, k) => `<div class="item"><input type="checkbox" data-i="${i.id}" ${i.hecho ? "checked" : ""} ${mia ? "" : "disabled"}>
+  ${t.no_aplica ? "" : `<div class="card">${its.map((i, k) => `<div class="item${i.no_aplica ? " na" : ""}"><input type="checkbox" data-i="${i.id}" ${i.hecho ? "checked" : ""} ${mia && !i.no_aplica ? "" : "disabled"}>
    <div style="flex:1"><div>${i.name}</div>${gi(i, k) ? `<details class="info"><summary>ⓘ Qué significa</summary><div><b>Qué:</b> ${gi(i, k).que}</div><div><b>Adjunto:</b> ${gi(i, k).adjunto}</div><div><b>Quién:</b> ${gi(i, k).quien}</div><div><b>Cuándo:</b> ${gi(i, k).cuando}</div></details>` : ""}${i.adj ? `<span class="tag">Requiere adjunto</span>` : ""}${i.observado && !i.hecho ? `<span class="tag r">Reabierto por CEO</span>` : ""}
    ${i.adjuntos.map((f) => `<div class="adj">📎 ${f}</div>`).join("")}
    ${i.hecho ? `<div class="muted">✔ ${nom(db, i.hecho_por)} · ${fmt(i.hecho_at)}${new Date(i.hecho_at) > new Date(i.vence) ? ' <span class="tag r">fuera de término</span>' : ""}</div>` : ""}
+   ${i.no_aplica ? `<div><span class="tag">No aplica</span>${i.na_motivo ? ` <span class="muted">${esc(i.na_motivo)}</span>` : ""}</div><div class="muted">⊘ ${nom(db, i.na_por)} · ${fmt(i.na_at)}</div>${mia ? `<button class="lnk" data-nau="${i.id}">Deshacer «No aplica»</button>` : ""}`
+     : mia && !i.hecho ? `<button class="lnk" data-na="${i.id}">No aplica…</button><div data-nabox="${i.id}" hidden><textarea data-nam="${i.id}" rows="1" maxlength="500" placeholder="Motivo (opcional)"></textarea><button class="btn sec" data-naok="${i.id}">Confirmar «No aplica» de este ítem</button></div>` : ""}
    ${mia ? `<textarea class="obs" data-o="${i.id}" rows="1" maxlength="2000" placeholder="Observación (opcional)">${(i.obs || "").replace(/</g, "&lt;")}</textarea>` : i.obs ? `<div class="muted">📝 ${i.obs.replace(/</g, "&lt;")}</div>` : ""}
-${mia && !i.hecho && i.adj ? `<label class="adj">＋ Adjuntar foto o PDF<input type="file" data-f="${i.id}" accept="image/*,application/pdf" capture="environment" hidden></label>` : ""}</div></div>`).join("")}</div>`}
+${mia && !i.hecho && !i.no_aplica && i.adj ? `<label class="adj">＋ Adjuntar foto o PDF<input type="file" data-f="${i.id}" accept="image/*,application/pdf" capture="environment" hidden></label>` : ""}</div></div>`).join("")}</div>`}
   <div class="err" id="e"></div>${mia ? "" : '<p class="muted">Solo lectura: cada gerente marca lo suyo (registro indelegable, punto 2.1).</p>'}`;
   const err = (e) => ($("#e").textContent = e.message), re = () => area(u, otId, aid);
   app.querySelectorAll("[data-i]").forEach((c) => (c.onchange = async () => { try { await api.marcar(u, +c.dataset.i, c.checked); re(); } catch (e) { c.checked = !c.checked; err(e); } }));
   app.querySelectorAll("[data-f]").forEach((f) => (f.onchange = async () => { if (f.files[0]) { try { await api.marcar(u, +f.dataset.f, false, DEMO ? f.files[0].name : f.files[0]); re(); } catch (e) { err(e); } } }));
   app.querySelectorAll("[data-o]").forEach((o) => (o.onchange = async () => { try { await api.observacion(u, +o.dataset.o, o.value.trim()); o.classList.add("ok"); } catch (e) { err(e); } }));
+  app.querySelectorAll("[data-na]").forEach((b) => (b.onclick = () => { const x = app.querySelector(`[data-nabox="${b.dataset.na}"]`); x.hidden = !x.hidden; }));
+  app.querySelectorAll("[data-naok]").forEach((b) => (b.onclick = async () => { try { await api.noAplicaItem(u, +b.dataset.naok, true, app.querySelector(`[data-nam="${b.dataset.naok}"]`).value); re(); } catch (e) { err(e); } }));
+  app.querySelectorAll("[data-nau]").forEach((b) => (b.onclick = async () => { try { await api.noAplicaItem(u, +b.dataset.nau, false, ""); re(); } catch (e) { err(e); } }));
   const na = $("#na"); if (na && mia) na.onchange = async () => { if (t.no_aplica) { await api.noAplica(u, otId, aid, false, ""); re(); } else $("#nabox").hidden = !na.checked; };
   const ok = $("#naok"); if (ok) ok.onclick = async () => { try { await api.noAplica(u, otId, aid, true, $("#motivo").value); re(); } catch (e) { err(e); } };
 }
 async function consolidado(u, otId) {
   const db = await api.cargar(), ot = db.obras.find((o) => o.id === otId), [et, ec] = ESTADO[ot.estado];
   const filas = db.areas.map((a) => { const t = db.tareas.find((x) => x.ot === otId && x.area_id === a.id), its = db.items.filter((i) => i.ot === otId && i.area_id === a.id);
-    const p = t.no_aplica ? 100 : Math.round((100 * its.filter((i) => i.hecho).length) / its.length), tarde = p < 100 && new Date(t.vence) < new Date();
+    const p = t.no_aplica ? 100 : Math.round((100 * its.filter(api.resuelto).length) / its.length), tarde = p < 100 && new Date(t.vence) < new Date();
     const tag = t.no_aplica ? ["No aplica", ""] : p === 100 ? ["Completo", "v"] : t.observada ? ["Observado", "r"] : tarde ? ["Vencido", "r"] : [p + "%", "a"];
     return `<a href="#/ot/${otId}/area/${a.id}"><div class="item" style="display:block"><div class="row"><span>${a.name}</span><span class="tag ${tag[1]}">${tag[0]}</span></div>${bar(p)}</div></a>`; }).join("");
   const comp = db.areas.filter((a) => api.areaCompleta(db, otId, a.id)).length, rondas = db.rondas.filter((r) => r.ot === otId);
@@ -83,7 +89,7 @@ async function aprobar(u, otId) {
   const est = (c) => api.areaCompleta(db, otId, db.areas.find((x) => x.code === c).id);
   app.innerHTML = `<a href="#/ot/${otId}" class="muted">‹ Volver</a><h2>Aprobación formal del inicio</h2><div class="card"><b>${ot.name}</b>${bar(avance(db, otId))}<div class="muted">Ronda ${ot.ronda + 1} · ${ESTADO[ot.estado][0]}</div></div>
   <div class="card">${val.map(([t, c]) => `<div class="item"><span>${est(c) ? "✅" : "⏳"}</span><span>${t}</span></div>`).join("")}</div>
-  ${!ok ? `<div class="card muted">Se habilita cuando las 11 áreas estén completas o marquen «No aplica».</div>` : `<div class="card"><label class="muted">Observaciones (obligatorias para devolver)</label><textarea id="o" rows="3"></textarea>
+  ${!ok ? `<div class="card muted">Se habilita cuando las 11 áreas estén completas (ítems cumplidos o «No aplica»).</div>` : `<div class="card"><label class="muted">Observaciones (obligatorias para devolver)</label><textarea id="o" rows="3"></textarea>
   <button class="btn ok" id="ap">Aprobar inicio de obra</button><button class="btn sec" id="dv">Devolver como Observado…</button>
   <div id="dvbox" hidden><div class="muted" style="margin-top:10px">Áreas a reabrir:</div>${db.areas.map((a) => `<label class="row" style="justify-content:flex-start;gap:8px;padding:4px 0"><input type="checkbox" data-a="${a.id}" style="width:20px;height:20px">${a.name}</label>`).join("")}
   <button class="btn" id="dvok" style="background:#b42318">Confirmar devolución</button></div>

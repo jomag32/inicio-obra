@@ -47,7 +47,12 @@ async function perfil(s) {
   if (!u.length) throw new Err("Tu usuario de Odoo no está habilitado en la app (Proyecto › Usuarios de la app).", 403);
   return { id: s.uid, nombre: u[0].x_name, rol: u[0].x_rol || "gerente", areas: u[0].x_area_ids };
 }
+// «No aplica» por ítem: campos nuevos (aditivos) en x_inicio_obra_item. Si Odoo todavía no los tiene, la app sigue andando como antes.
+const NA_ITEM = ["x_no_aplica", "x_no_aplica_motivo", "x_no_aplica_user_id", "x_no_aplica_at"];
+let naItemOk = null;
+async function hayNaItem(s) { if (naItemOk === null) { const f = await ex(s, "x_inicio_obra_item", "fields_get", [NA_ITEM], { attributes: ["type"] }); naItemOk = NA_ITEM.every((k) => k in f); } return naItemOk; }
 async function datos(s) {
+  const na = await hayNaItem(s);
   const desde = new Date(Date.now() - DIAS_APROBADAS * 864e5).toISOString().slice(0, 19).replace("T", " ");
   const obras = await ex(s, "x_inicio_obra", "search_read", [["|", ["x_state", "!=", "aprobado"], ["x_ceo_at", ">=", desde]]],
     { fields: ["x_name", "x_project_id", "x_state", "x_ronda", "create_date"], order: "id desc", limit: 60 });
@@ -55,7 +60,7 @@ async function datos(s) {
   const consultas = [
     () => ex(s, "x_inicio_obra_area", "search_read", [[["x_active", "=", true]]], { fields: ["x_code", "x_name", "x_plazo_horas"], order: "x_sequence" }),
     () => ex(s, "x_inicio_obra_tarea", "search_read", [[["x_inicio_id", "in", ids]]], { fields: ["x_inicio_id", "x_area_id", "x_vence", "x_no_aplica", "x_no_aplica_motivo", "x_no_aplica_usuario_id", "x_no_aplica_at", "x_observada", "x_obs_ceo"] }),
-    () => ex(s, "x_inicio_obra_item", "search_read", [[["x_inicio_id", "in", ids]]], { fields: ["x_inicio_id", "x_area_id", "x_tarea_id", "x_name", "x_requiere_adjunto", "x_vence", "x_hecho", "x_hecho_user_id", "x_hecho_at", "x_observado", "x_obs"], order: "x_sequence, id" }),
+    () => ex(s, "x_inicio_obra_item", "search_read", [[["x_inicio_id", "in", ids]]], { fields: ["x_inicio_id", "x_area_id", "x_tarea_id", "x_name", "x_requiere_adjunto", "x_vence", "x_hecho", "x_hecho_user_id", "x_hecho_at", "x_observado", "x_obs", ...(na ? NA_ITEM : [])], order: "x_sequence, id" }),
     () => ex(s, "x_inicio_obra_ronda", "search_read", [[["x_inicio_id", "in", ids]]], { fields: ["x_inicio_id", "x_numero", "x_resultado", "x_obs", "x_at", "x_tarea_ids"], order: "x_numero" }),
     () => ex(s, "x_inicio_obra_usuario", "search_read", [[]], { fields: ["x_name", "x_login", "x_rol", "x_area_ids", "x_active", "x_user_id"], context: { active_test: false } }),
   ];
@@ -72,7 +77,7 @@ async function datos(s) {
     tareas: tareas.map((t) => ({ id: t.id, ot: m2o(t.x_inicio_id), area_id: m2o(t.x_area_id), vence: iso(t.x_vence), no_aplica: t.x_no_aplica, motivo: t.x_no_aplica_motivo || "",
       na_por: usu.get(m2o(t.x_no_aplica_usuario_id)) || null, na_at: iso(t.x_no_aplica_at), observada: t.x_observada, obs_ceo: t.x_obs_ceo || "" })),
     items: items.map((i) => ({ id: i.id, ot: m2o(i.x_inicio_id), area_id: m2o(i.x_area_id), tarea: m2o(i.x_tarea_id), name: i.x_name, adj: i.x_requiere_adjunto, vence: iso(i.x_vence),
-      hecho: i.x_hecho, hecho_por: m2o(i.x_hecho_user_id), hecho_at: iso(i.x_hecho_at), observado: i.x_observado, obs: i.x_obs || "", adjuntos: adj.filter((a) => a.res_id === i.id).map((a) => a.name) })),
+      hecho: i.x_hecho, hecho_por: m2o(i.x_hecho_user_id), hecho_at: iso(i.x_hecho_at), observado: i.x_observado, obs: i.x_obs || "", no_aplica: !!i.x_no_aplica, na_motivo: i.x_no_aplica_motivo || "", na_por: m2o(i.x_no_aplica_user_id), na_at: iso(i.x_no_aplica_at), adjuntos: adj.filter((a) => a.res_id === i.id).map((a) => a.name) })),
     rondas: rondas.map((r) => ({ ot: m2o(r.x_inicio_id), n: r.x_numero, res: r.x_resultado, obs: r.x_obs || "", at: iso(r.x_at), areas: r.x_tarea_ids.map((t) => tareaArea.get(t)).filter(Boolean) })),
     usuarios: usuarios.map((u) => ({ id: m2o(u.x_user_id), fila: u.id, nombre: u.x_name, login: u.x_login || "", rol: u.x_rol, areas: u.x_area_ids, activo: u.x_active, odoo: true, clave: true })),
   };
@@ -96,7 +101,7 @@ const rutas = {
     const id = +b.item; if (!id) throw new Err("Ítem inválido.");
     if (b.adjunto) { const { nombre, datos: d, tipo } = b.adjunto;
       await ex(s, "ir.attachment", "create", [{ name: String(nombre).slice(0, 200), datas: String(d), mimetype: tipo || undefined, res_model: "x_inicio_obra_item", res_id: id }]); }
-    if (typeof b.hecho === "boolean") await ex(s, "x_inicio_obra_item", "write", [[id], { x_hecho: b.hecho }]);
+    if (typeof b.hecho === "boolean") await ex(s, "x_inicio_obra_item", "write", [[id], { x_hecho: b.hecho, ...(b.hecho && (await hayNaItem(s)) ? { x_no_aplica: false, x_no_aplica_motivo: false } : {}) }]);
     return { ok: true };
   },
   "POST /api/observacion": async (b, s) => { const id = +b.item; if (!id) throw new Err("Ítem inválido.");
@@ -106,6 +111,12 @@ const rutas = {
     if (!t.length) throw new Err("Área no encontrada.", 404);
     if (b.valor && !String(b.motivo || "").trim()) throw new Err("Escribí el motivo de «No aplica».");
     await ex(s, "x_inicio_obra_tarea", "write", [t, b.valor ? { x_no_aplica: true, x_no_aplica_motivo: String(b.motivo).trim() } : { x_no_aplica: false, x_no_aplica_motivo: false }]);
+    return { ok: true };
+  },
+  "POST /api/no-aplica-item": async (b, s) => { // quién/cuándo los sella Odoo (automatización) con la sesión del propio gerente; las reglas de Odoo limitan a su área
+    const id = +b.item; if (!id) throw new Err("Ítem inválido.");
+    if (!(await hayNaItem(s))) throw new Err("«No aplica» por ítem todavía no está habilitado en Odoo.", 409);
+    await ex(s, "x_inicio_obra_item", "write", [[id], b.valor ? { x_no_aplica: true, x_no_aplica_motivo: String(b.motivo || "").trim().slice(0, 500) || false, x_hecho: false } : { x_no_aplica: false, x_no_aplica_motivo: false }]);
     return { ok: true };
   },
   "POST /api/aprobar": async (b, s) => { const ot = +b.ot; if (b.obs) await ex(s, "x_inicio_obra", "write", [[ot], { x_ceo_obs: String(b.obs) }]); await correr(s, ACC.aprobar, "x_inicio_obra", [ot]); return { ok: true }; },

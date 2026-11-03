@@ -2,7 +2,7 @@
 // x_inicio_obra_usuario (usuarios de la app), x_inicio_obra_area, x_inicio_obra (por OT), x_inicio_obra_tarea (área por obra,
 // "No aplica"), x_inicio_obra_item, x_inicio_obra_ronda (historial CEO). Sin nombres reales. En producción lo reemplaza un
 // backend propio (patrón hys-carga): login contra x_inicio_obra_usuario, clave con hash solo en el backend, token HMAC.
-const K = "io_mock_v2";
+const K = "io_mock_v3";
 export function venceLunSab(desde, horas) { // suma horas salteando domingos
   let d = new Date(desde);
   while (horas > 0) {
@@ -30,13 +30,17 @@ export async function cargar() {
     tareas.push(t);
     a.items.forEach((s, j) => { const [name, f] = s.split("|"); const hecho = !t.no_aplica && (ot.id === 9101 ? (ai < 9 || (ai === 9 && j < 2)) : (ai < 3 && j < 2));
       items.push({ id: id++, ot: ot.id, area_id: ai + 1, name, adj: f === "adj", vence, hecho, hecho_por: hecho ? 100 + ai : null,
-        hecho_at: hecho ? new Date(new Date(ot.creada).getTime() + (6 + j) * 3600e3).toISOString() : null, adjuntos: hecho && f === "adj" ? ["documento-ejemplo.pdf"] : [], observado: false }); });
+        hecho_at: hecho ? new Date(new Date(ot.creada).getTime() + (6 + j) * 3600e3).toISOString() : null, adjuntos: hecho && f === "adj" ? ["documento-ejemplo.pdf"] : [], observado: false, no_aplica: false, na_motivo: "", na_por: null, na_at: null }); });
   });
+  // Ejemplo de «No aplica» por ítem (OT 9102, Fábrica): un ítem no aplica y los demás sí.
+  const fab = areas.find((a) => a.code === "FAB"), ej = fab && items.find((i) => i.ot === 9102 && i.area_id === fab.id && !i.hecho);
+  if (ej) Object.assign(ej, { no_aplica: true, na_motivo: "La obra no lleva piezas de fábrica para este ítem.", na_por: 100 + fab.id - 1, na_at: "2026-10-29T10:15:00-03:00" });
   db = { usuarios, areas, obras, tareas, items, rondas: [] }; localStorage.setItem(K, JSON.stringify(db)); return db;
 }
 const guardar = (db) => localStorage.setItem(K, JSON.stringify(db));
 const esDe = (u, aid) => u.areas.includes(aid);
-export const areaCompleta = (db, ot, aid) => { const t = db.tareas.find((x) => x.ot === ot && x.area_id === aid); return t.no_aplica || db.items.filter((i) => i.ot === ot && i.area_id === aid).every((i) => i.hecho); };
+export const resuelto = (i) => !!(i.hecho || i.no_aplica);
+export const areaCompleta = (db, ot, aid) => { const t = db.tareas.find((x) => x.ot === ot && x.area_id === aid); return t.no_aplica || db.items.filter((i) => i.ot === ot && i.area_id === aid).every(resuelto); };
 function recalcular(db, ot) { const o = db.obras.find((x) => x.id === ot); if (["carga", "observado"].includes(o.estado) && db.areas.every((a) => areaCompleta(db, ot, a.id))) o.estado = "completo"; }
 export async function ingresar(login, clave) { const db = await cargar(); const u = db.usuarios.find((x) => x.login === login && x.activo);
   if (!u || clave !== "demo") throw new Error("Usuario o contraseña incorrectos."); return u; }
@@ -46,6 +50,7 @@ export async function marcar(u, itemId, hecho, adjunto) {
   if (adjunto) it.adjuntos.push(adjunto);
   if (hecho && it.adj && !it.adjuntos.length) throw new Error("Este ítem requiere un adjunto.");
   Object.assign(it, { hecho, hecho_por: hecho ? u.id : null, hecho_at: hecho ? new Date().toISOString() : null, observado: hecho ? false : it.observado });
+  if (hecho) Object.assign(it, { no_aplica: false, na_motivo: "", na_por: null, na_at: null }); // cumplido y no aplica son excluyentes
   recalcular(db, it.ot); guardar(db);
 }
 export async function noAplica(u, ot, aid, valor, motivo) {
@@ -55,6 +60,13 @@ export async function noAplica(u, ot, aid, valor, motivo) {
   Object.assign(t, { no_aplica: valor, motivo: valor ? motivo.trim() : "", na_por: valor ? u.id : null, na_at: valor ? new Date().toISOString() : null, observada: valor ? false : t.observada });
   recalcular(db, ot); guardar(db);
 }
+export async function noAplicaItem(u, itemId, valor, motivo = "") { // «No aplica» de un solo ítem: sella quién y cuándo; motivo opcional
+  const db = await cargar(), it = db.items.find((i) => i.id === itemId);
+  if (!esDe(u, it.area_id)) throw new Error("Solo el gerente del área decide si este ítem aplica.");
+  Object.assign(it, valor ? { no_aplica: true, na_motivo: String(motivo || "").trim(), na_por: u.id, na_at: new Date().toISOString(), hecho: false, hecho_por: null, hecho_at: null, observado: false }
+                          : { no_aplica: false, na_motivo: "", na_por: null, na_at: null });
+  recalcular(db, it.ot); guardar(db);
+}
 export async function aprobar(u, ot, obs) { const db = await cargar(), o = db.obras.find((x) => x.id === ot);
   if (u.rol !== "ceo") throw new Error("Solo el CEO aprueba."); if (o.estado !== "completo") throw new Error("Faltan áreas.");
   o.ronda++; o.estado = "aprobado"; db.rondas.push({ ot, n: o.ronda, res: "aprobado", obs, por: u.id, at: new Date().toISOString(), areas: [] }); guardar(db); }
@@ -63,7 +75,7 @@ export async function observar(u, ot, obs, areaIds) { const db = await cargar(),
   if (!areaIds.length) throw new Error("Elegí al menos un área a reabrir.");
   o.ronda++; o.estado = "observado"; db.rondas.push({ ot, n: o.ronda, res: "observado", obs: obs.trim(), por: u.id, at: new Date().toISOString(), areas: areaIds });
   for (const aid of areaIds) { const t = db.tareas.find((x) => x.ot === ot && x.area_id === aid); Object.assign(t, { observada: true, obs_ceo: obs.trim(), no_aplica: false, motivo: "", na_por: null, na_at: null });
-    db.items.filter((i) => i.ot === ot && i.area_id === aid).forEach((i) => Object.assign(i, { hecho: false, hecho_por: null, hecho_at: null, observado: true })); }
+    db.items.filter((i) => i.ot === ot && i.area_id === aid).forEach((i) => Object.assign(i, { hecho: false, hecho_por: null, hecho_at: null, observado: true, no_aplica: false, na_motivo: "", na_por: null, na_at: null })); }
   guardar(db); return areaIds.map((aid) => db.usuarios.filter((x) => x.areas.includes(aid)).map((x) => x.nombre)).flat(); }
 export async function guardarUsuario(u, id, cambios) { const db = await cargar(); if (!["coo", "secretaria"].includes(u.rol)) throw new Error("Sin permiso.");
   Object.assign(db.usuarios.find((x) => x.id === id), cambios); guardar(db); }
