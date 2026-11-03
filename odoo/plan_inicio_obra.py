@@ -97,7 +97,7 @@ COO_UID = 2
 GROUP_CEO = 'Inicio de obra · Aprobador (CEO)'
 
 # Sello de evidencia (2.2): quién y cuándo, lo pone el servidor. Recalcula avance; si 100% avisa al COO.
-NA = 'x_no_aplica' in env['x_inicio_obra_item']._fields  # compatible con bases sin «No aplica» por ítem
+NA = bool(env['ir.model.fields'].sudo().search_count([('model','=','x_inicio_obra_item'),('name','=','x_no_aplica')]))  # compatible con bases sin «No aplica» por ítem
 res = lambda i: bool(i.x_hecho or (NA and i.x_no_aplica))  # resuelto = cumplido o no aplica
 for it in records:
     if NA and it.x_no_aplica and not it.x_no_aplica_at:  # «No aplica» del ítem: sella quién/cuándo; no es «fuera de término»
@@ -166,7 +166,7 @@ for ini in records:
         'x_at': datetime.datetime.now(), 'x_avance': ini.x_avance, 'x_tarea_ids': [(6,0,tareas.ids)], 'x_item_ids': [(6,0,items.ids)]})
     reabrir = items or ini.x_item_ids.filtered(lambda i: i.x_tarea_id in tareas)
     vals_re = {'x_hecho': False, 'x_hecho_user_id': False, 'x_hecho_at': False, 'x_hecho_usuario_id': False, 'x_observado': True}
-    if 'x_no_aplica' in reabrir._fields: vals_re.update({'x_no_aplica': False, 'x_no_aplica_motivo': False, 'x_no_aplica_user_id': False, 'x_no_aplica_at': False})
+    if env['ir.model.fields'].sudo().search_count([('model','=','x_inicio_obra_item'),('name','=','x_no_aplica')]): vals_re.update({'x_no_aplica': False, 'x_no_aplica_motivo': False, 'x_no_aplica_user_id': False, 'x_no_aplica_at': False})
     reabrir.write(vals_re)
     tareas.write({'x_completa': False, 'x_no_aplica': False, 'x_obs_ceo': ini.x_ceo_obs})
     ini.write({'x_state': 'observado', 'x_ronda': ronda, 'x_ceo_obs': False})
