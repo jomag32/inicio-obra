@@ -100,3 +100,24 @@ Rollback:
 ```bash
 python3 migrar_requiere_protocolo.py revertir backup-requiere-protocolo-20261106-175254.json --confirmo-produccion
 ```
+
+
+## Update 2026-11-06 ~18:01 America/Cordoba — selection obligatoria
+Jorge: reemplazar checkbox por desplegable **Requiere / No requiere**, vacío al abrir, `required`.
+
+Backup: `odoo/backup-requiere-seleccion-20261106-180152.json`
+
+| Pieza | Cambio |
+|---|---|
+| Wizard field boolean #44876 | unlink |
+| Wizard field selection | **#44878** `x_io_requiere_protocolo` options requiere/no_requiere, required=True |
+| selection lines | #7860 Requiere, #7861 No requiere |
+| Project field | sigue boolean **#44874** |
+| Vista wizard #8585 | `required="1"`, label «Protocolo de inicio de obra» |
+| SA 2420 | `50e46131…` → `5f29bbdc…` (mapea selection → boolean en copy) |
+| SA 2638 | sin cambio (`652304ef…`) |
+
+Rollback:
+```bash
+python3 migrar_requiere_seleccion.py revertir backup-requiere-seleccion-20261106-180152.json --confirmo-produccion
+```
