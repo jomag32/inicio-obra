@@ -63,7 +63,8 @@ GROUP_CEO = "Inicio de obra · Aprobador (CEO)"; GROUP_VER = "Inicio de obra · 
 
 # ---------- server actions (safe_eval) ----------
 CODE_CREAR = r'''
-# Al crear OT: 1 tarea por área asignada al gerente + ítems. Se corre una sola vez por OT.
+# Al crear OT: protocolo (x_inicio_obra + áreas + ítems). NO crea project.task en el tablero del proyecto.
+# Asignación y plazos viven en x_inicio_obra_tarea / x_inicio_obra_item (app Inicio de obra).
 for prj in records:
     if prj.x_io_inicio_id: continue
     ini = env['x_inicio_obra'].create({'x_name': 'Inicio de obra · ' + prj.name, 'x_project_id': prj.id, 'x_state': 'carga'})
@@ -80,16 +81,12 @@ for prj in records:
     lote = []
     for a in env['x_inicio_obra_area'].search([('x_active','=',True)], order='x_sequence'):
         vence = vence_lun_sab(base - datetime.timedelta(hours=3), a.x_plazo_horas or 48) + datetime.timedelta(hours=3)  # cuenta en hora AR (UTC-3)
-        gerentes = env['x_inicio_obra_usuario'].search([('x_area_ids','in',a.id),('x_active','=',True)])
-        t = env['project.task'].create({'name': 'Inicio de obra · ' + a.x_name, 'project_id': prj.id,
-             'user_ids': [(6,0,gerentes.mapped('x_user_id').ids)], 'date_deadline': vence,
-             'x_io_inicio_id': ini.id, 'x_io_area_id': a.id})
-        ta = env['x_inicio_obra_tarea'].create({'x_name': a.x_name, 'x_inicio_id': ini.id, 'x_area_id': a.id, 'x_task_id': t.id, 'x_vence': vence})
-        lote += [{'x_name': p.x_name, 'x_inicio_id': ini.id, 'x_task_id': t.id, 'x_area_id': a.id,
+        ta = env['x_inicio_obra_tarea'].create({'x_name': a.x_name, 'x_inicio_id': ini.id, 'x_area_id': a.id, 'x_vence': vence})
+        lote += [{'x_name': p.x_name, 'x_inicio_id': ini.id, 'x_area_id': a.id,
                  'x_tarea_id': ta.id, 'x_sequence': p.x_sequence, 'x_requiere_adjunto': p.x_requiere_adjunto, 'x_vence': vence} for p in a.x_plantilla_ids.sorted('x_sequence')]
     its = env['x_inicio_obra_item'].create(lote)  # en lote: una sola escritura, sin disparar la automatización por ítem
     ini.write({'x_items_total': len(its), 'x_items_ok': 0, 'x_avance': 0})
-    ini.message_post(body='Inicio de obra creado: tareas asignadas a cada área.')
+    ini.message_post(body='Inicio de obra creado: checklist por área (sin tareas en el proyecto).')
 '''
 CODE_ITEM = r'''
 actor = env.user  # la app móvil opera con la sesión Odoo del propio usuario
