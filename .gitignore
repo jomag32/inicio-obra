@@ -2,3 +2,4 @@
 node_modules/
 odoo/backup-*.json
 __pycache__/
+odoo/snapshot-requiere-protocolo-*.json

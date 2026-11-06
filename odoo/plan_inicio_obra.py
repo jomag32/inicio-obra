@@ -54,7 +54,7 @@ MODELS = [
    ("x_fuera_termino","boolean","Fuera de término",{"tracking":1}), ("x_obs","text","Observación",{})] + NA_ITEM_FIELDS),
 ]
 TASK_FIELDS = [("x_io_inicio_id","many2one","Inicio de obra",{"relation":P}), ("x_io_area_id","many2one","Área inicio de obra",{"relation":f"{P}_area"})]
-PROJECT_FIELDS = [("x_io_inicio_id","many2one","Inicio de obra",{"relation":P})]
+PROJECT_FIELDS = [("x_io_inicio_id","many2one","Inicio de obra",{"relation":P}), ("x_io_requiere_protocolo","boolean","Requiere protocolo de inicio de obra",{})]
 M2M = [(f"{P}_usuario","x_area_ids","Áreas",f"{P}_area","x_io_usuario_area_rel","x_usuario_id","x_area_id"),
        (f"{P}_ronda","x_tarea_ids","Áreas devueltas",f"{P}_tarea","x_io_ronda_tarea_rel","x_ronda_id","x_tarea_id"),
        (f"{P}_ronda","x_item_ids","Ítems devueltos",f"{P}_item","x_io_ronda_item_rel","x_ronda_id","x_item_id")]
@@ -63,10 +63,11 @@ GROUP_CEO = "Inicio de obra · Aprobador (CEO)"; GROUP_VER = "Inicio de obra · 
 
 # ---------- server actions (safe_eval) ----------
 CODE_CREAR = r'''
-# Al crear OT: protocolo (x_inicio_obra + áreas + ítems). NO crea project.task en el tablero del proyecto.
-# Asignación y plazos viven en x_inicio_obra_tarea / x_inicio_obra_item (app Inicio de obra).
+# Al crear OT: protocolo (x_inicio_obra + áreas + ítems) SOLO si x_io_requiere_protocolo.
+# No crea project.task en el tablero. Plazos/asignación viven en x_inicio_obra_*.
 for prj in records:
     if prj.x_io_inicio_id: continue
+    if not prj.x_io_requiere_protocolo: continue
     ini = env['x_inicio_obra'].create({'x_name': 'Inicio de obra · ' + prj.name, 'x_project_id': prj.id, 'x_state': 'carga'})
     prj.write({'x_io_inicio_id': ini.id})
     base = prj.create_date or datetime.datetime.now()

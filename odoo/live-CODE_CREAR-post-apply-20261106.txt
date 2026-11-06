@@ -1,0 +1,25 @@
+
+# Al crear OT: protocolo (x_inicio_obra + áreas + ítems). NO crea project.task en el tablero del proyecto.
+# Asignación y plazos viven en x_inicio_obra_tarea / x_inicio_obra_item (app Inicio de obra).
+for prj in records:
+    if prj.x_io_inicio_id: continue
+    ini = env['x_inicio_obra'].create({'x_name': 'Inicio de obra · ' + prj.name, 'x_project_id': prj.id, 'x_state': 'carga'})
+    prj.write({'x_io_inicio_id': ini.id})
+    base = prj.create_date or datetime.datetime.now()
+    def vence_lun_sab(d, horas):
+        # suma horas corridas salteando domingos completos (weekday 6)
+        while horas > 0:
+            if d.weekday() == 6:
+                d = (d + datetime.timedelta(days=1)).replace(hour=0, minute=0, second=0); continue
+            fin_dia = (d + datetime.timedelta(days=1)).replace(hour=0, minute=0, second=0)
+            h = min(horas, (fin_dia - d).total_seconds() / 3600.0); d = d + datetime.timedelta(hours=h); horas -= h
+        return d
+    lote = []
+    for a in env['x_inicio_obra_area'].search([('x_active','=',True)], order='x_sequence'):
+        vence = vence_lun_sab(base - datetime.timedelta(hours=3), a.x_plazo_horas or 48) + datetime.timedelta(hours=3)  # cuenta en hora AR (UTC-3)
+        ta = env['x_inicio_obra_tarea'].create({'x_name': a.x_name, 'x_inicio_id': ini.id, 'x_area_id': a.id, 'x_vence': vence})
+        lote += [{'x_name': p.x_name, 'x_inicio_id': ini.id, 'x_area_id': a.id,
+                 'x_tarea_id': ta.id, 'x_sequence': p.x_sequence, 'x_requiere_adjunto': p.x_requiere_adjunto, 'x_vence': vence} for p in a.x_plantilla_ids.sorted('x_sequence')]
+    its = env['x_inicio_obra_item'].create(lote)  # en lote: una sola escritura, sin disparar la automatización por ítem
+    ini.write({'x_items_total': len(its), 'x_items_ok': 0, 'x_avance': 0})
+    ini.message_post(body='Inicio de obra creado: checklist por área (sin tareas en el proyecto).')

@@ -1,0 +1,218 @@
+F_ORDEN = 'x_studio_orden_de_venta'
+F_PLANTILLA = 'x_studio_plantilla_de_proyecto'
+F_NOMBRE_PROYECTO = 'x_studio_nombre_del_proyecto'
+F_CLIENTE = 'x_studio_cliente'
+F_EMPRESA = 'x_studio_company_id'
+F_PROYECTO_CREADO = 'x_studio_proyecto_creado'
+
+for wiz in records:
+    order = wiz[F_ORDEN]
+    template = wiz[F_PLANTILLA]
+
+    if not order:
+        raise UserError('No hay una orden de venta vinculada.')
+
+    if not template:
+        raise UserError('Debe seleccionar una plantilla de proyecto.')
+
+    nombre_proyecto = wiz[F_NOMBRE_PROYECTO] or wiz.x_name or order.name
+
+    vals_project = {
+        'name': nombre_proyecto,
+    }
+
+    # Datos principales desde la orden de venta
+    if 'partner_id' in template._fields:
+        vals_project['partner_id'] = order.partner_id.id
+
+    if 'company_id' in template._fields:
+        vals_project['company_id'] = order.company_id.id
+
+    if 'active' in template._fields:
+        vals_project['active'] = True
+
+    # Intentar evitar que copie estado de plantilla
+    posibles_campos_plantilla = [
+        'is_template',
+        'is_project_template',
+        'is_template_project',
+        'project_is_template',
+        'x_studio_es_plantilla',
+        'x_studio_disponible_desde_ventas',
+        'x_studio_plantilla_desde_ventas',
+    ]
+
+    for campo in posibles_campos_plantilla:
+        if campo in template._fields:
+            vals_project[campo] = False
+
+    # Si existe vínculo directo a orden de venta
+    if 'sale_order_id' in template._fields:
+        vals_project['sale_order_id'] = order.id
+
+    # [ARME IO] flag protocolo — debe ir en vals del copy:
+    # la automatización 138 (SA 2638) es on_create; un write posterior ya no la dispara.
+    F_REQ = 'x_io_requiere_protocolo'
+    if F_REQ in template._fields:
+        vals_project[F_REQ] = bool(wiz[F_REQ]) if F_REQ in wiz._fields else False
+
+    # Copiar la plantilla
+    nuevo_proyecto = template.copy(vals_project)
+
+    vals_update = {}
+
+    # Reforzar datos después de copiar
+    if 'name' in nuevo_proyecto._fields:
+        vals_update['name'] = nombre_proyecto
+
+    if 'partner_id' in nuevo_proyecto._fields:
+        vals_update['partner_id'] = order.partner_id.id
+
+    if 'company_id' in nuevo_proyecto._fields:
+        vals_update['company_id'] = order.company_id.id
+
+    if 'active' in nuevo_proyecto._fields:
+        vals_update['active'] = True
+
+    if 'sale_order_id' in nuevo_proyecto._fields:
+        vals_update['sale_order_id'] = order.id
+
+    if 'x_studio_orden_de_venta' in nuevo_proyecto._fields:
+        vals_update['x_studio_orden_de_venta'] = order.id
+
+    # [ARME IO] reforzar flag protocolo en el write post-copy (visibilidad / reportes)
+    if F_REQ in nuevo_proyecto._fields:
+        vals_update[F_REQ] = bool(wiz[F_REQ]) if F_REQ in wiz._fields else False
+
+    # Reforzar que NO sea plantilla
+    for campo in posibles_campos_plantilla:
+        if campo in nuevo_proyecto._fields:
+            vals_update[campo] = False
+
+    if vals_update:
+        nuevo_proyecto.write(vals_update)
+
+    # =========================================================
+    # Crear cuenta analítica para el proyecto
+    # =========================================================
+
+    AnalyticAccount = env['account.analytic.account']
+    AnalyticPlan = env['account.analytic.plan']
+
+    # Buscar plan analítico Project
+    plan = AnalyticPlan.search([
+        ('name', '=', 'Project')
+    ], limit=1)
+
+    # Si no encuentra Project, toma el primer plan disponible
+    if not plan:
+        plan = AnalyticPlan.search([], limit=1)
+
+    if not plan:
+        raise UserError('No se encontró ningún plan analítico. Primero debe existir un plan analítico, por ejemplo "Project".')
+
+    cuenta_analitica = False
+
+    # Revisar si el proyecto copiado ya trajo una cuenta analítica
+    cuenta_actual = False
+    cuenta_template = False
+
+    if 'account_id' in nuevo_proyecto._fields:
+        cuenta_actual = nuevo_proyecto.account_id
+
+    if not cuenta_actual and 'analytic_account_id' in nuevo_proyecto._fields:
+        cuenta_actual = nuevo_proyecto.analytic_account_id
+
+    if 'account_id' in template._fields:
+        cuenta_template = template.account_id
+
+    if not cuenta_template and 'analytic_account_id' in template._fields:
+        cuenta_template = template.analytic_account_id
+
+    # Si el proyecto ya tiene una cuenta distinta a la de la plantilla,
+    # la reutilizamos y la actualizamos.
+    # Si no tiene cuenta, o copió la misma cuenta de la plantilla,
+    # creamos una cuenta nueva.
+    if cuenta_actual and (not cuenta_template or cuenta_actual.id != cuenta_template.id):
+        cuenta_analitica = cuenta_actual
+
+        vals_cuenta_update = {}
+
+        if 'name' in AnalyticAccount._fields:
+            vals_cuenta_update['name'] = nuevo_proyecto.name
+
+        if 'plan_id' in AnalyticAccount._fields:
+            vals_cuenta_update['plan_id'] = plan.id
+
+        if 'partner_id' in AnalyticAccount._fields and order.partner_id:
+            vals_cuenta_update['partner_id'] = order.partner_id.id
+
+        if 'company_id' in AnalyticAccount._fields and order.company_id:
+            vals_cuenta_update['company_id'] = order.company_id.id
+
+        if 'code' in AnalyticAccount._fields and order.name:
+            vals_cuenta_update['code'] = order.name
+
+        if vals_cuenta_update:
+            cuenta_analitica.write(vals_cuenta_update)
+
+    else:
+        vals_analitica = {
+            'name': nuevo_proyecto.name,
+        }
+
+        if 'plan_id' in AnalyticAccount._fields:
+            vals_analitica['plan_id'] = plan.id
+
+        if 'partner_id' in AnalyticAccount._fields and order.partner_id:
+            vals_analitica['partner_id'] = order.partner_id.id
+
+        if 'company_id' in AnalyticAccount._fields and order.company_id:
+            vals_analitica['company_id'] = order.company_id.id
+
+        if 'code' in AnalyticAccount._fields and order.name:
+            vals_analitica['code'] = order.name
+
+        cuenta_analitica = AnalyticAccount.create(vals_analitica)
+
+    # Vincular cuenta analítica al proyecto creado
+    if cuenta_analitica:
+        vals_project_analytic = {}
+
+        if 'account_id' in nuevo_proyecto._fields:
+            vals_project_analytic['account_id'] = cuenta_analitica.id
+
+        if 'analytic_account_id' in nuevo_proyecto._fields:
+            vals_project_analytic['analytic_account_id'] = cuenta_analitica.id
+
+        if vals_project_analytic:
+            nuevo_proyecto.write(vals_project_analytic)
+
+    # =========================================================
+    # Guardar referencia al proyecto creado
+    # =========================================================
+
+    if F_PROYECTO_CREADO in wiz._fields:
+        wiz.write({
+            F_PROYECTO_CREADO: nuevo_proyecto.id,
+        })
+
+    # Mensaje en la orden de venta
+    mensaje = 'Se creó el proyecto <b>%s</b> desde la plantilla <b>%s</b>.' % (
+        nuevo_proyecto.display_name,
+        template.display_name,
+    )
+
+    if cuenta_analitica:
+        mensaje += '<br/>Cuenta analítica creada/vinculada: <b>%s</b>.' % cuenta_analitica.display_name
+
+    order.message_post(body=mensaje)
+
+    action = {
+        'type': 'ir.actions.act_window',
+        'name': 'Proyecto creado',
+        'res_model': 'project.project',
+        'view_mode': 'form',
+        'res_id': nuevo_proyecto.id,
+        'target': 'current',
+    }
