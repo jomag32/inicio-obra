@@ -83,3 +83,20 @@ artefactos + `revisar` dry contra prod.
 SA 2420 y SA 2638. Las vistas ARME creadas en ese apply se unlink-ean. Los
 campos boolean nuevos **no** se borran solos (aviso en consola); unlink manual
 si hace falta.
+
+## Aplicado en producción (2026-11-06 ~17:52 America/Cordoba)
+OK de Jorge. Backup: `odoo/backup-requiere-protocolo-20261106-175254.json`
+
+| Pieza | Antes | Después |
+|---|---|---|
+| SA 2420 | `645ba5d1…` | `50e46131…` |
+| SA 2638 | `7477ed7d…` | `652304ef…` |
+| Campo project | — | id **44874** |
+| Campo wizard | — | id **44876** |
+| Vista wizard | — | id **8585** |
+| Vista proyecto | — | id **8586** |
+
+Rollback:
+```bash
+python3 migrar_requiere_protocolo.py revertir backup-requiere-protocolo-20261106-175254.json --confirmo-produccion
+```
