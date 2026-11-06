@@ -27,10 +27,10 @@ haya o no protocolo. El trabajo del protocolo vive en `x_inicio_obra` / checklis
 - Ya no hay asignación Odoo nativa (`user_ids`) ni deadline visible en Proyecto → Tareas
   para el protocolo (antes era redundante con la app).
 
-## Pendiente (Jorge no decidió aún)
-¿Seguir auto-creando `x_inicio_obra` (+ áreas + ítems) en **toda** OT nueva, o esperar al
-check del comercial «requiere protocolo»? Por ahora el parche **mantiene** el auto-create
-de los registros del protocolo; solo corta las `project.task`.
+## Pendiente → prep lista (2026-11-06)
+Jorge pidió el check del comercial. Prep en rama `feat/requiere-protocolo-checkbox`
+(`migrar_requiere_protocolo.py` + NOTAS-requiere-protocolo.md). **No aplicado** aún:
+hasta el OK, CODE_CREAR sigue auto-creando `x_inicio_obra` en toda OT nueva.
 
 ## Scripts (no corridos en prod en esta prep)
 - `migrar_sin_tareas_protocolo_en_proyecto.py` — revisar | backup | aplicar | revertir
