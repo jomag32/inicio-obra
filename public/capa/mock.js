@@ -30,7 +30,7 @@ export async function cargar() {
     tareas.push(t);
     a.items.forEach((s, j) => { const [name, f] = s.split("|"); const hecho = !t.no_aplica && (ot.id === 9101 ? (ai < 9 || (ai === 9 && j < 2)) : (ai < 3 && j < 2));
       items.push({ id: id++, ot: ot.id, area_id: ai + 1, name, adj: f === "adj", vence, hecho, hecho_por: hecho ? 100 + ai : null,
-        hecho_at: hecho ? new Date(new Date(ot.creada).getTime() + (6 + j) * 3600e3).toISOString() : null, adjuntos: hecho && f === "adj" ? ["documento-ejemplo.pdf"] : [], observado: false, no_aplica: false, na_motivo: "", na_por: null, na_at: null }); });
+        hecho_at: hecho ? new Date(new Date(ot.creada).getTime() + (6 + j) * 3600e3).toISOString() : null, adjuntos: hecho && f === "adj" ? [{ id: 9000 + id, name: "documento-ejemplo.pdf", create_uid: 100 + ai }] : [], observado: false, no_aplica: false, na_motivo: "", na_por: null, na_at: null }); });
   });
   // Ejemplo de «No aplica» por ítem (OT 9102, Fábrica): un ítem no aplica y los demás sí.
   const fab = areas.find((a) => a.code === "FAB"), ej = fab && items.find((i) => i.ot === 9102 && i.area_id === fab.id && !i.hecho);
@@ -47,7 +47,7 @@ export async function ingresar(login, clave) { const db = await cargar(); const 
 export async function marcar(u, itemId, hecho, adjunto) {
   const db = await cargar(), it = db.items.find((i) => i.id === itemId);
   if (!esDe(u, it.area_id)) throw new Error("Solo el gerente del área puede marcar este ítem.");
-  if (adjunto) it.adjuntos.push(adjunto);
+  if (adjunto) it.adjuntos.push({ id: Date.now(), name: typeof adjunto === "string" ? adjunto : (adjunto.name || "archivo"), create_uid: u.id });
   if (hecho && it.adj && !it.adjuntos.length) throw new Error("Este ítem requiere un adjunto.");
   Object.assign(it, { hecho, hecho_por: hecho ? u.id : null, hecho_at: hecho ? new Date().toISOString() : null, observado: hecho ? false : it.observado });
   if (hecho) Object.assign(it, { no_aplica: false, na_motivo: "", na_por: null, na_at: null }); // cumplido y no aplica son excluyentes
@@ -81,3 +81,14 @@ export async function guardarUsuario(u, id, cambios) { const db = await cargar()
   Object.assign(db.usuarios.find((x) => x.id === id), cambios); guardar(db); }
 export async function observacion(u, itemId, texto) { const db = await cargar(), it = db.items.find((i) => i.id === itemId);
   if (!esDe(u, it.area_id)) throw new Error("Solo el gerente del área puede escribir la observación."); it.obs = texto; guardar(db); }
+
+export async function borrarAdjunto(u, adjId) {
+  const db = await cargar(), it = db.items.find((i) => (i.adjuntos || []).some((f) => f && f.id === adjId));
+  if (!it) throw new Error("No encuentro ese archivo.");
+  if (!esDe(u, it.area_id)) throw new Error("Solo el gerente del área puede gestionar este ítem.");
+  const f = it.adjuntos.find((x) => x.id === adjId);
+  if (f.create_uid && f.create_uid !== u.id) throw new Error("Solo quien lo subió puede borrarlo.");
+  if (it.hecho && it.adj && it.adjuntos.length <= 1) throw new Error("Este ítem está marcado como cumplido y requiere un adjunto. Desmarcalo primero para borrar el archivo y volver a cargarlo.");
+  it.adjuntos = it.adjuntos.filter((x) => x.id !== adjId);
+  guardar(db);
+}

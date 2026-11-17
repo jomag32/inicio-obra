@@ -41,6 +41,12 @@ function demasiado(ip) { const m = Math.floor(Date.now() / 60e3), r = ritmo.get(
 
 // ---------- utilidades ----------
 const iso = (d) => (d ? d.replace(" ", "T") + "Z" : null), m2o = (v) => (Array.isArray(v) ? v[0] : null);
+function uidDeAdjunto(a) {
+  const uid = m2o(a.create_uid);
+  if (uid) return uid;
+  const m = String(a.description || "").match(/io_uid:(\d+)/);
+  return m ? +m[1] : null;
+}
 class Err extends Error { constructor(m, s = 400) { super(m); this.status = s; } }
 async function perfil(s) {
   const u = await ex(s, "x_inicio_obra_usuario", "search_read", [[["x_user_id", "=", s.uid], ["x_active", "=", true]]], { fields: ["x_name", "x_rol", "x_area_ids"], limit: 1 });
@@ -68,7 +74,7 @@ async function datos(s) {
   for (const f of consultas) res.push(await f()); // en serie: Odoo SaaS limita ráfagas paralelas
   const [areas, tareas, items, rondas, usuarios] = res;
   const itemIds = items.map((i) => i.id);
-  const adj = itemIds.length ? await ex(s, "ir.attachment", "search_read", [[["res_model", "=", "x_inicio_obra_item"], ["res_id", "in", itemIds]]], { fields: ["name", "res_id"] }) : [];
+  const adj = itemIds.length ? await ex(s, "ir.attachment", "search_read", [[["res_model", "=", "x_inicio_obra_item"], ["res_id", "in", itemIds]]], { fields: ["name", "res_id", "create_uid", "description"] }) : [];
   const usu = new Map(usuarios.map((u) => [u.id, m2o(u.x_user_id)]));
   const tareaArea = new Map(tareas.map((t) => [t.id, m2o(t.x_area_id)]));
   return {
@@ -77,7 +83,7 @@ async function datos(s) {
     tareas: tareas.map((t) => ({ id: t.id, ot: m2o(t.x_inicio_id), area_id: m2o(t.x_area_id), vence: iso(t.x_vence), no_aplica: t.x_no_aplica, motivo: t.x_no_aplica_motivo || "",
       na_por: usu.get(m2o(t.x_no_aplica_usuario_id)) || null, na_at: iso(t.x_no_aplica_at), observada: t.x_observada, obs_ceo: t.x_obs_ceo || "" })),
     items: items.map((i) => ({ id: i.id, ot: m2o(i.x_inicio_id), area_id: m2o(i.x_area_id), tarea: m2o(i.x_tarea_id), name: i.x_name, adj: i.x_requiere_adjunto, vence: iso(i.x_vence),
-      hecho: i.x_hecho, hecho_por: m2o(i.x_hecho_user_id), hecho_at: iso(i.x_hecho_at), observado: i.x_observado, obs: i.x_obs || "", no_aplica: !!i.x_no_aplica, na_motivo: i.x_no_aplica_motivo || "", na_por: m2o(i.x_no_aplica_user_id), na_at: iso(i.x_no_aplica_at), adjuntos: adj.filter((a) => a.res_id === i.id).map((a) => a.name) })),
+      hecho: i.x_hecho, hecho_por: m2o(i.x_hecho_user_id), hecho_at: iso(i.x_hecho_at), observado: i.x_observado, obs: i.x_obs || "", no_aplica: !!i.x_no_aplica, na_motivo: i.x_no_aplica_motivo || "", na_por: m2o(i.x_no_aplica_user_id), na_at: iso(i.x_no_aplica_at), adjuntos: adj.filter((a) => a.res_id === i.id).map((a) => ({ id: a.id, name: a.name, create_uid: uidDeAdjunto(a) })) })),
     rondas: rondas.map((r) => ({ ot: m2o(r.x_inicio_id), n: r.x_numero, res: r.x_resultado, obs: r.x_obs || "", at: iso(r.x_at), areas: r.x_tarea_ids.map((t) => tareaArea.get(t)).filter(Boolean) })),
     usuarios: usuarios.map((u) => ({ id: m2o(u.x_user_id), fila: u.id, nombre: u.x_name, login: u.x_login || "", rol: u.x_rol, areas: u.x_area_ids, activo: u.x_active, odoo: true, clave: true })),
   };
@@ -100,8 +106,22 @@ const rutas = {
   "POST /api/marcar": async (b, s) => {
     const id = +b.item; if (!id) throw new Err("Ítem inválido.");
     if (b.adjunto) { const { nombre, datos: d, tipo } = b.adjunto;
-      await ex(s, "ir.attachment", "create", [{ name: String(nombre).slice(0, 200), datas: String(d), mimetype: tipo || undefined, res_model: "x_inicio_obra_item", res_id: id }]); }
+      await ex(s, "ir.attachment", "create", [{ name: String(nombre).slice(0, 200), datas: String(d), mimetype: tipo || undefined, res_model: "x_inicio_obra_item", res_id: id, description: "io_uid:" + s.uid }]); }
     if (typeof b.hecho === "boolean") await ex(s, "x_inicio_obra_item", "write", [[id], { x_hecho: b.hecho, ...(b.hecho && (await hayNaItem(s)) ? { x_no_aplica: false, x_no_aplica_motivo: false } : {}) }]);
+    return { ok: true };
+  },
+  "POST /api/borrar-adjunto": async (b, s) => {
+    const id = +b.adjunto || +b.id; if (!id) throw new Err("Adjunto inválido.");
+    const atts = await ex(s, "ir.attachment", "search_read", [[["id", "=", id], ["res_model", "=", "x_inicio_obra_item"]]], { fields: ["id", "name", "res_id", "create_uid", "description"], limit: 1 });
+    if (!atts.length) throw new Err("No encuentro ese archivo.", 404);
+    if (uidDeAdjunto(atts[0]) !== s.uid) throw new Err("Solo quien lo subió puede borrarlo.", 403);
+    const its = await ex(s, "x_inicio_obra_item", "search_read", [[["id", "=", atts[0].res_id]]], { fields: ["id", "x_hecho", "x_requiere_adjunto"], limit: 1 });
+    if (!its.length) throw new Err("Ítem no encontrado.", 404);
+    if (its[0].x_hecho && its[0].x_requiere_adjunto) {
+      const n = await ex(s, "ir.attachment", "search_count", [[["res_model", "=", "x_inicio_obra_item"], ["res_id", "=", its[0].id]]]);
+      if (n <= 1) throw new Err("Este ítem está marcado como cumplido y requiere un adjunto. Desmarcalo primero para borrar el archivo y volver a cargarlo.");
+    }
+    await ex(s, "ir.attachment", "unlink", [[id]]);
     return { ok: true };
   },
   "POST /api/observacion": async (b, s) => { const id = +b.item; if (!id) throw new Err("Ítem inválido.");

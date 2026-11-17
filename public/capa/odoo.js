@@ -23,3 +23,4 @@ export const observar = async (_u, ot, obs, areas) => (await q("POST", "observar
 export const guardarUsuario = (_u, id, c) => q("POST", "usuario", { fila: cache?.usuarios.find((x) => x.id === id)?.fila, activo: c.activo });
 export const demo = false;
 export const observacion = (_u, item, texto) => q("POST", "observacion", { item, texto });
+export const borrarAdjunto = (_u, adjunto) => q("POST", "borrar-adjunto", { adjunto });
